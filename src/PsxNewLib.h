@@ -100,6 +100,11 @@ private:
 	
 	PsxButtons buttonWord;
 
+	byte lx;
+	byte ly;
+	byte rx;
+	byte ry;
+
 	inline void attention () {
 		att.low ();           // low enable joystick
 
@@ -222,24 +227,37 @@ public:
 		cmd.config (OUTPUT, HIGH);
 		clk.config (OUTPUT, HIGH);
 		dat.config (INPUT, HIGH);     // Enable pull-up
+
+		lx = 0;
+		ly = 0;
+		rx = 0;
+		ry = 0;
 		
 #ifdef USE_HW_SPI
 		SPI.begin ();
 #endif
 
-		read ();
-		delay (200);
-
+		// Some disposable readings to let the controller know we are here
 		for (byte i = 0; i < 5; ++i) {
 			read ();
+			delay (200);
 		}
-		delay (200);
 
 		return read ();
 	}
 	
 	PsxButtons getButtonWord () const {
 		return ~buttonWord;
+	}
+
+	void getLeftAnalog (byte& x, byte& y) {
+		x = lx;
+		y = ly;
+	}
+
+	void getRightAnalog (byte& x, byte& y) {
+		x = rx;
+		y = ry;
 	}
 	
 	boolean enterConfigMode () {
@@ -380,6 +398,13 @@ public:
 
 		if (ret) {
 			buttonWord = ((PsxButtons) in[4] << 8) | in[3];
+
+			if (isAnalogMode (in)) {
+				rx = in[5];
+				ry = in[6];
+				lx = in[7];
+				ly = in[8];
+			}
 		} else if (isConfigMode (in)) {
 			// We're stuck in config mode, try to get out
 			exitConfigMode ();
@@ -388,3 +413,7 @@ public:
 		return ret;
 	}
 };
+
+class PsxControllerHwSpi: public PsxController<10, 11, 12, 13> {
+};
+

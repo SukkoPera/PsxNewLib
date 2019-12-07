@@ -1,9 +1,13 @@
+#include <DigitalIO.h>
 #include <PsxNewLib.h>
 
 #include <avr/pgmspace.h>
 typedef const __FlashStringHelper * FlashStr;
 typedef const byte* PGM_BYTES_P;
 #define PSTR_TO_F(s) reinterpret_cast<const __FlashStringHelper *> (s)
+
+const byte PIN_BUTTONPRESS = A0;
+const byte PIN_HAVECONTROLLER = A1;
 
 const byte PSX_BUTTONS_NO = 16;
 
@@ -95,6 +99,14 @@ void dumpButtons (PsxButtons psxButtons) {
 	}
 }
 
+void dumpAnalog (const char *str, const byte x, const byte y) {
+	Serial.print (str);
+	Serial.print (F(" analog: x = "));
+	Serial.print (x);
+	Serial.print (F(", y = "));
+	Serial.println (y);
+}
+
 
 
 const char ctrlTypeUnknown[] PROGMEM = "Unknown";
@@ -117,12 +129,13 @@ const char* const controllerTypeStrings[PSCTRL_MAX + 1] PROGMEM = {
 
 
 
-PsxController<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psx;
+PsxControllerHwSpi psx;
 
 boolean haveController = false;
  
 void setup () {
-	pinMode (A0, OUTPUT);
+	pinMode (PIN_BUTTONPRESS, OUTPUT);
+	pinMode (PIN_HAVECONTROLLER, OUTPUT);
 	
 	delay (300);
 
@@ -131,6 +144,10 @@ void setup () {
 }
  
 void loop () {
+	static byte slx, sly, srx, sry;
+	
+	fastDigitalWrite (PIN_HAVECONTROLLER, haveController);
+	
 	if (!haveController) {
 		if (psx.begin ()) {
 			Serial.println (F("Controller found!"));
@@ -164,8 +181,24 @@ void loop () {
 			Serial.println (F("Controller lost :("));
 			haveController = false;
 		} else {
-			digitalWrite (A0, !!psx.getButtonWord ());
+			fastDigitalWrite (PIN_BUTTONPRESS, !!psx.getButtonWord ());
 			dumpButtons (psx.getButtonWord ());
+
+			byte lx, ly;
+			psx.getLeftAnalog (lx, ly);
+			if (lx != slx || ly != sly) {
+				dumpAnalog ("Left", lx, ly);
+				slx = lx;
+				sly = ly;
+			}
+
+			byte rx, ry;
+			psx.getRightAnalog (rx, ry);
+			if (rx != srx || ry != sry) {
+				dumpAnalog ("Right", rx, ry);
+				srx = rx;
+				sry = ry;
+			}
 		}
 	}
 
