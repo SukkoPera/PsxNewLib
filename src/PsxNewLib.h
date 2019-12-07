@@ -1,0 +1,390 @@
+/** \brief Attention Delay
+ *
+ * Time between attention being issued to the controller and the first clock
+ * edge.
+ */
+const byte ATTN_DELAY = 8;
+
+
+
+const byte INTER_CMD_BYTE_DELAY = 15;
+
+const byte PIN_PS2_ATT = 10;
+const byte PIN_PS2_CMD = 11;
+const byte PIN_PS2_DAT = 12;
+const byte PIN_PS2_CLK = 13;
+
+// ms
+const unsigned long COMMAND_TIMEOUT = 250;
+
+// ms
+const unsigned long COMMAND_RETRY_INTERVAL = 10;
+
+// ms
+const unsigned long MODE_SWITCH_DELAY = 500;
+
+#define USE_HW_SPI
+
+//~ #define DUMP_COMMS
+
+#include <DigitalIO.h>
+
+#ifndef USE_HW_SPI
+
+/** \brief Clock Period
+ *
+ * Inverse of clock frequency, i.e.: time for a *full* clock cycle, from falling
+ * edge to the next falling edge.
+ */
+const byte CLK_PERIOD = 30;
+
+#else
+
+#include <SPI.h>
+
+// Set up the speed, data order and data mode
+SPISettings spiSettings (25000, LSBFIRST, SPI_MODE3);
+
+#endif
+
+enum PsxButton {
+	PSB_SELECT     = 0x0001,
+	PSB_L3         = 0x0002,
+	PSB_R3         = 0x0004,
+	PSB_START      = 0x0008,
+	PSB_PAD_UP     = 0x0010,
+	PSB_PAD_RIGHT  = 0x0020,
+	PSB_PAD_DOWN   = 0x0040,
+	PSB_PAD_LEFT   = 0x0080,
+	PSB_L2         = 0x0100,
+	PSB_R2         = 0x0200,
+	PSB_L1         = 0x0400,
+	PSB_R1         = 0x0800,
+	PSB_GREEN      = 0x1000,
+	PSB_RED        = 0x2000,
+	PSB_BLUE       = 0x4000,
+	PSB_PINK       = 0x8000,
+	PSB_TRIANGLE   = 0x1000,
+	PSB_CIRCLE     = 0x2000,
+	PSB_CROSS      = 0x4000,
+	PSB_SQUARE     = 0x8000
+};
+
+typedef uint16_t PsxButtons;
+
+static byte enter_config[] = {0x01, 0x43, 0x00, 0x01, 0x00};
+static byte set_mode[] = {0x01, 0x44, 0x00, /* enabled */ 0x01, /* locked */ 0x03, 0x00, 0x00, 0x00, 0x00};
+static byte set_pressures[] = {0x01, 0x4F, 0x00, 0xFF, 0xFF, 0x03, 0x00, 0x00, 0x00};
+//~ static byte exit_config[] = {0x01, 0x43, 0x00, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A};
+static byte exit_config[] = {0x01, 0x43, 0x00, 0x00, 0x00};
+//~ static byte enable_rumble[] = {0x01, 0x4D, 0x00, 0x00, 0x01};
+static byte type_read[] = {0x01, 0x45, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A};
+static byte poll[] = {0x01, 0x42, 0x00, 0xFF, 0xFF};
+
+enum PsxControllerType {
+	PSCTRL_UNKNOWN = 0,
+	PSCTRL_DUALSHOCK,
+	PSCTRL_DSWIRELESS,
+	PSCTRL_GUITHERO,
+	
+	PSCTRL_MAX
+};
+
+template <uint8_t PIN_ATT, uint8_t PIN_CMD, uint8_t PIN_DAT, uint8_t PIN_CLK>
+class PsxController {
+private:
+	DigitalPin<PIN_ATT> att;
+	DigitalPin<PIN_CLK> clk;
+	DigitalPin<PIN_CMD> cmd;
+	DigitalPin<PIN_DAT> dat;
+	
+	PsxButtons buttonWord;
+
+	inline void attention () {
+		att.low ();           // low enable joystick
+
+#ifdef USE_HW_SPI
+		SPI.beginTransaction (spiSettings);
+#endif
+
+		delayMicroseconds (ATTN_DELAY);
+	}
+	
+	inline void noAttention () {
+		//~ delayMicroseconds (5);
+		
+#ifdef USE_HW_SPI
+		SPI.endTransaction ();
+#endif
+
+		cmd.high ();
+		clk.high ();
+		att.high ();
+		delayMicroseconds (ATTN_DELAY);
+	}
+	
+	byte shiftInOut (const byte out) {
+		byte in = 0;
+
+		// 1. The clock is held high until a byte is to be sent.
+
+#ifdef USE_HW_SPI
+		in = SPI.transfer (out);
+#else
+		for (byte i = 0; i < 8; ++i) {
+			// 2. When the clock edge drops low, the values on the line start to
+			// change
+			clk.low ();
+
+			delayMicroseconds (10);
+			
+			if (bitRead (out, i)) {
+				cmd.high ();
+			} else {
+				cmd.low ();
+			}
+
+			delayMicroseconds (CLK_PERIOD / 2 - 10);
+
+			// 3. When the clock goes from low to high, value are actually read
+			clk.high ();
+
+			delayMicroseconds (10);
+			
+			if (dat) {
+				bitSet (in, i);
+			}
+
+			delayMicroseconds (CLK_PERIOD / 2 - 10);
+		}
+#endif
+
+		return in;
+	}
+
+	void shiftInOut (const byte *out, byte *in, const byte len) {
+#ifdef DUMP_COMMS
+		byte inbuf[len];
+#endif
+
+		for (byte i = 0; i < len; ++i) {
+			byte tmp = shiftInOut (out[i]);
+#ifdef DUMP_COMMS
+			inbuf[i] = tmp;
+#endif
+			if (in != NULL) {
+				in[i] = tmp;
+			}
+			
+			delayMicroseconds (INTER_CMD_BYTE_DELAY);   // Very important!
+		}
+		
+#ifdef DUMP_COMMS		
+		Serial.print (F("<-- "));
+		for (byte i = 0; i < len; ++i) {
+			if (out[i] < 0x10)
+				Serial.print (0);
+			Serial.print (out[i], HEX);
+			Serial.print (' ');
+		}
+		Serial.println ();
+		
+		Serial.print (F("--> "));
+		for (byte i = 0; i < len; ++i) {
+			if (inbuf[i] < 0x10)
+				Serial.print (0);
+			Serial.print (inbuf[i], HEX);
+			Serial.print (' ');
+		}
+		Serial.println ();
+#endif
+	}
+
+	inline boolean isValidReply (const byte *status) {
+		return status[0] != 0xFF || status[1] != 0xFF || status[2] != 0xFF;
+	}
+	
+	inline boolean isAnalogMode (const byte *status) {
+		return (status[1] & 0xF0) == 0x70;
+	}
+	
+	inline boolean isDigitalMode (const byte *status) {
+		return (status[1] & 0xF0) == 0x40;
+	}
+	
+	inline boolean isConfigMode (const byte *status) {
+		return status[1] == 0xF3 /* && status[2] == 0x5A */;
+	}
+	
+public:
+	boolean begin () {
+		att.config (OUTPUT, HIGH);    // HIGH -> Controller not selected
+		cmd.config (OUTPUT, HIGH);
+		clk.config (OUTPUT, HIGH);
+		dat.config (INPUT, HIGH);     // Enable pull-up
+		
+#ifdef USE_HW_SPI
+		SPI.begin ();
+#endif
+
+		read ();
+		delay (200);
+
+		for (byte i = 0; i < 5; ++i) {
+			read ();
+		}
+		delay (200);
+
+		return read ();
+	}
+	
+	PsxButtons getButtonWord () const {
+		return ~buttonWord;
+	}
+	
+	boolean enterConfigMode () {
+		boolean ret = false;
+		byte in[sizeof (enter_config)];
+
+		unsigned long start = millis ();
+		do {
+			attention ();
+			shiftInOut (enter_config, in, sizeof (enter_config));
+			noAttention ();
+
+			ret = isValidReply (in) && isConfigMode (in);
+
+			if (!ret) {
+				delay (COMMAND_RETRY_INTERVAL);
+			}
+		} while (!ret && millis () - start <= COMMAND_TIMEOUT);
+		delay (MODE_SWITCH_DELAY);
+
+		return ret;
+	}
+	
+	boolean setAnalogMode (bool enabled = true, bool locked = false) {
+		boolean ret = false;
+		byte out[sizeof (set_mode)];
+		byte in[sizeof (set_mode)];
+		
+		memcpy (out, set_mode, sizeof (set_mode));
+		out[3] = enabled ? 0x01 : 0x00;
+		out[4] = locked ? 0x03 : 0x00;
+		
+		attention ();
+		shiftInOut (out, in, sizeof (set_mode));
+		noAttention ();
+		
+		// Give controller some time to switch to set the requested mode
+		delay (MODE_SWITCH_DELAY);
+
+		unsigned long start = millis ();
+		byte cnt = 0;
+		do {
+			attention ();
+			shiftInOut (out, in, sizeof (set_mode));
+			noAttention ();
+
+			/* We can't know if we have successfully enabled analog mode until
+			 * we get out of config mode, so let's just be happy if we get a few
+			 * consecutive valid replies
+			 */
+			if (isValidReply (in)) {
+				++cnt;
+			}
+			ret = cnt >= 3;
+
+			if (!ret) {
+				delay (COMMAND_RETRY_INTERVAL);
+			}
+		} while (!ret && millis () - start <= COMMAND_TIMEOUT);
+		delay (MODE_SWITCH_DELAY);
+		
+		return ret;
+	}
+	
+	PsxControllerType getControllerType () {
+		byte in[sizeof (type_read)];
+		
+		attention ();
+		shiftInOut (type_read, in, sizeof (type_read));
+		noAttention ();
+		
+		const byte& controllerType = in[3];
+		if (controllerType == 0x03) {
+			return PSCTRL_DUALSHOCK;
+		//~ } else if (controllerType == 0x01 && in[1] == 0x42) {
+			//~ return 4;		// ???
+		}  else if (controllerType == 0x01 && in[1] != 0x42) {
+			return PSCTRL_GUITHERO;
+		} else if (controllerType == 0x0C) {
+			return PSCTRL_DSWIRELESS;
+		}
+		
+		return PSCTRL_UNKNOWN;
+	}
+	
+	void enablePressures () {
+		byte in[sizeof (set_pressures)];
+		
+		attention ();
+		shiftInOut (set_pressures, in, sizeof (set_pressures));
+		noAttention ();
+		
+		//~ delay (1000);
+	}
+	
+	boolean exitConfigMode () {
+		boolean ret = false;
+		byte in[sizeof (exit_config)];
+
+		unsigned long start = millis ();
+		do {
+			attention ();
+			//~ shiftInOut (poll, in, sizeof (poll));
+			shiftInOut (exit_config, in, sizeof (enter_config));
+			noAttention ();
+			
+			ret = isValidReply (in) && !isConfigMode (in);
+
+			if (!ret) {
+				delay (COMMAND_RETRY_INTERVAL);
+			}
+		} while (!ret && millis () - start <= COMMAND_TIMEOUT);
+		delay (MODE_SWITCH_DELAY);
+		
+		return ret;
+	}
+
+	boolean read () {
+		boolean ret = false;
+		byte in[21];
+
+		attention ();
+		shiftInOut (poll, in, sizeof (poll));
+		
+		if (isAnalogMode (in)) {
+			// If controller is in full data mode, get the rest of data
+
+			// Just send zeros
+			byte tmp[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+			shiftInOut (tmp, in + sizeof (poll), sizeof (tmp));
+			
+			ret = true;
+		} else if (isDigitalMode (in)) {
+			ret = true;
+		}
+		
+		noAttention ();
+
+		if (ret) {
+			buttonWord = ((PsxButtons) in[4] << 8) | in[3];
+		} else if (isConfigMode (in)) {
+			// We're stuck in config mode, try to get out
+			exitConfigMode ();
+		}
+	 
+		return ret;
+	}
+};
