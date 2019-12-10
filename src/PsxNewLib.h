@@ -47,7 +47,10 @@ SPISettings spiSettings (25000, LSBFIRST, SPI_MODE3);
 
 #endif
 
+/** \brief Type that is used to report button presses
+ */
 enum PsxButton {
+	PSB_NONE       = 0x0000,
 	PSB_SELECT     = 0x0001,
 	PSB_L3         = 0x0002,
 	PSB_R3         = 0x0004,
@@ -97,6 +100,8 @@ private:
 	DigitalPin<PIN_CLK> clk;
 	DigitalPin<PIN_CMD> cmd;
 	DigitalPin<PIN_DAT> dat;
+
+	boolean analogMode;
 	
 	PsxButtons buttonWord;
 
@@ -209,15 +214,15 @@ private:
 		return status[0] != 0xFF || status[1] != 0xFF || status[2] != 0xFF;
 	}
 	
-	inline boolean isAnalogMode (const byte *status) {
+	inline boolean isAnalogReply (const byte *status) {
 		return (status[1] & 0xF0) == 0x70;
 	}
 	
-	inline boolean isDigitalMode (const byte *status) {
+	inline boolean isDigitalReply (const byte *status) {
 		return (status[1] & 0xF0) == 0x40;
 	}
 	
-	inline boolean isConfigMode (const byte *status) {
+	inline boolean isConfigReply (const byte *status) {
 		return status[1] == 0xF3 /* && status[2] == 0x5A */;
 	}
 	
@@ -232,6 +237,8 @@ public:
 		ly = 0;
 		rx = 0;
 		ry = 0;
+
+		analogMode = false;
 		
 #ifdef USE_HW_SPI
 		SPI.begin ();
@@ -240,7 +247,7 @@ public:
 		// Some disposable readings to let the controller know we are here
 		for (byte i = 0; i < 5; ++i) {
 			read ();
-			delay (200);
+			delay (1);
 		}
 
 		return read ();
@@ -250,14 +257,35 @@ public:
 		return ~buttonWord;
 	}
 
-	void getLeftAnalog (byte& x, byte& y) {
+	boolean getLeftAnalog (byte& x, byte& y) {
 		x = lx;
 		y = ly;
+
+		return analogMode;
 	}
 
-	void getRightAnalog (byte& x, byte& y) {
+	boolean getRightAnalog (byte& x, byte& y) {
 		x = rx;
 		y = ry;
+
+		return analogMode;
+	}
+
+	boolean buttonPressed (PsxButtons buttonWordx, PsxButton button) {
+		return ((buttonWordx & static_cast<PsxButtons> (button)) > 0);
+	}
+
+	boolean buttonPressed (PsxButton button) {
+		return buttonPressed (~buttonWord, button);
+	}
+
+	boolean noButtonPressed (PsxButtons buttons) {
+		return buttons == PSB_NONE;
+	}
+	
+
+	boolean noButtonPressed (void) {
+		return buttonWord == ~PSB_NONE;
 	}
 	
 	boolean enterConfigMode () {
@@ -270,7 +298,7 @@ public:
 			shiftInOut (enter_config, in, sizeof (enter_config));
 			noAttention ();
 
-			ret = isValidReply (in) && isConfigMode (in);
+			ret = isValidReply (in) && isConfigReply (in);
 
 			if (!ret) {
 				delay (COMMAND_RETRY_INTERVAL);
@@ -364,7 +392,7 @@ public:
 			shiftInOut (exit_config, in, sizeof (enter_config));
 			noAttention ();
 			
-			ret = isValidReply (in) && !isConfigMode (in);
+			ret = isValidReply (in) && !isConfigReply (in);
 
 			if (!ret) {
 				delay (COMMAND_RETRY_INTERVAL);
@@ -382,7 +410,7 @@ public:
 		attention ();
 		shiftInOut (poll, in, sizeof (poll));
 		
-		if (isAnalogMode (in)) {
+		if (isAnalogReply (in)) {
 			// If controller is in full data mode, get the rest of data
 
 			// Just send zeros
@@ -390,7 +418,7 @@ public:
 			shiftInOut (tmp, in + sizeof (poll), sizeof (tmp));
 			
 			ret = true;
-		} else if (isDigitalMode (in)) {
+		} else if (isDigitalReply (in)) {
 			ret = true;
 		}
 		
@@ -399,15 +427,18 @@ public:
 		if (ret) {
 			buttonWord = ((PsxButtons) in[4] << 8) | in[3];
 
-			if (isAnalogMode (in)) {
+			if (isAnalogReply (in)) {
+				analogMode = true;
 				rx = in[5];
 				ry = in[6];
 				lx = in[7];
 				ly = in[8];
 			}
-		} else if (isConfigMode (in)) {
+		} else if (isConfigReply (in)) {
 			// We're stuck in config mode, try to get out
 			exitConfigMode ();
+		} else {
+			analogMode = false;
 		}
 	 
 		return ret;
