@@ -1,18 +1,7 @@
-/** \brief Attention Delay
- *
- * Time between attention being issued to the controller and the first clock
- * edge.
- */
-const byte ATTN_DELAY = 8;
+//~ #define DUMP_COMMS
 
-
-
+// us
 const byte INTER_CMD_BYTE_DELAY = 15;
-
-const byte PIN_PS2_ATT = 10;
-const byte PIN_PS2_CMD = 11;
-const byte PIN_PS2_DAT = 12;
-const byte PIN_PS2_CLK = 13;
 
 // ms
 const unsigned long COMMAND_TIMEOUT = 250;
@@ -23,29 +12,6 @@ const unsigned long COMMAND_RETRY_INTERVAL = 10;
 // ms
 const unsigned long MODE_SWITCH_DELAY = 500;
 
-#define USE_HW_SPI
-
-//~ #define DUMP_COMMS
-
-#include <DigitalIO.h>
-
-#ifndef USE_HW_SPI
-
-/** \brief Clock Period
- *
- * Inverse of clock frequency, i.e.: time for a *full* clock cycle, from falling
- * edge to the next falling edge.
- */
-const byte CLK_PERIOD = 30;
-
-#else
-
-#include <SPI.h>
-
-// Set up the speed, data order and data mode
-SPISettings spiSettings (25000, LSBFIRST, SPI_MODE3);
-
-#endif
 
 /** \brief Type that is used to report button presses
  */
@@ -93,14 +59,8 @@ enum PsxControllerType {
 	PSCTRL_MAX
 };
 
-template <uint8_t PIN_ATT, uint8_t PIN_CMD, uint8_t PIN_DAT, uint8_t PIN_CLK>
 class PsxController {
-private:
-	DigitalPin<PIN_ATT> att;
-	DigitalPin<PIN_CLK> clk;
-	DigitalPin<PIN_CMD> cmd;
-	DigitalPin<PIN_DAT> dat;
-
+protected:
 	boolean analogMode;
 	
 	PsxButtons buttonWord;
@@ -110,67 +70,11 @@ private:
 	byte rx;
 	byte ry;
 
-	inline void attention () {
-		att.low ();           // low enable joystick
-
-#ifdef USE_HW_SPI
-		SPI.beginTransaction (spiSettings);
-#endif
-
-		delayMicroseconds (ATTN_DELAY);
-	}
+	virtual void attention () = 0;
 	
-	inline void noAttention () {
-		//~ delayMicroseconds (5);
-		
-#ifdef USE_HW_SPI
-		SPI.endTransaction ();
-#endif
-
-		cmd.high ();
-		clk.high ();
-		att.high ();
-		delayMicroseconds (ATTN_DELAY);
-	}
+	virtual void noAttention () = 0;
 	
-	byte shiftInOut (const byte out) {
-		byte in = 0;
-
-		// 1. The clock is held high until a byte is to be sent.
-
-#ifdef USE_HW_SPI
-		in = SPI.transfer (out);
-#else
-		for (byte i = 0; i < 8; ++i) {
-			// 2. When the clock edge drops low, the values on the line start to
-			// change
-			clk.low ();
-
-			delayMicroseconds (10);
-			
-			if (bitRead (out, i)) {
-				cmd.high ();
-			} else {
-				cmd.low ();
-			}
-
-			delayMicroseconds (CLK_PERIOD / 2 - 10);
-
-			// 3. When the clock goes from low to high, value are actually read
-			clk.high ();
-
-			delayMicroseconds (10);
-			
-			if (dat) {
-				bitSet (in, i);
-			}
-
-			delayMicroseconds (CLK_PERIOD / 2 - 10);
-		}
-#endif
-
-		return in;
-	}
+	virtual byte shiftInOut (const byte out) = 0;
 
 	void shiftInOut (const byte *out, byte *in, const byte len) {
 #ifdef DUMP_COMMS
@@ -227,12 +131,7 @@ private:
 	}
 	
 public:
-	boolean begin () {
-		att.config (OUTPUT, HIGH);    // HIGH -> Controller not selected
-		cmd.config (OUTPUT, HIGH);
-		clk.config (OUTPUT, HIGH);
-		dat.config (INPUT, HIGH);     // Enable pull-up
-
+	virtual boolean begin () {
 		lx = 0;
 		ly = 0;
 		rx = 0;
@@ -240,10 +139,6 @@ public:
 
 		analogMode = false;
 		
-#ifdef USE_HW_SPI
-		SPI.begin ();
-#endif
-
 		// Some disposable readings to let the controller know we are here
 		for (byte i = 0; i < 5; ++i) {
 			read ();
@@ -283,7 +178,6 @@ public:
 		return buttons == PSB_NONE;
 	}
 	
-
 	boolean noButtonPressed (void) {
 		return buttonWord == ~PSB_NONE;
 	}
@@ -444,7 +338,3 @@ public:
 		return ret;
 	}
 };
-
-class PsxControllerHwSpi: public PsxController<10, 11, 12, 13> {
-};
-
