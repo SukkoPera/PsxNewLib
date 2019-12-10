@@ -7,7 +7,7 @@
  * Time between attention being issued to the controller and the first clock
  * edge.
  */
-const byte ATTN_DELAY = 8;
+const byte ATTN_DELAY = 4;
 
 const byte PIN_UNO_SS = 10;
 const byte PIN_UNO_MOSI = 11;
@@ -15,7 +15,7 @@ const byte PIN_UNO_MISO = 12;
 const byte PIN_UNO_SCK = 13;
 
 // Set up the speed, data order and data mode
-static SPISettings spiSettings (25000, LSBFIRST, SPI_MODE3);
+static SPISettings spiSettings (250000, LSBFIRST, SPI_MODE3);
 
 class PsxControllerHwSpi: public PsxController {
 private:
