@@ -1,3 +1,6 @@
+#ifndef PSXNEWLIB_H_
+#define PSXNEWLIB_H_
+
 //~ #define DUMP_COMMS
 
 // us
@@ -60,14 +63,17 @@ enum PsxControllerType {
 	PSCTRL_DUALSHOCK,
 	PSCTRL_DSWIRELESS,
 	PSCTRL_GUITHERO,
-	
+
 	PSCTRL_MAX
 };
 
 class PsxController {
 protected:
-	boolean analogMode;
-	
+	static const byte BUFFER_SIZE = 32;
+	static const byte ANALOG_BTN_DATA_SIZE = 12;
+
+	byte inputBuffer[BUFFER_SIZE];
+
 	PsxButtons buttonWord;
 
 	byte lx;
@@ -75,10 +81,16 @@ protected:
 	byte rx;
 	byte ry;
 
+	boolean analogSticksValid;
+	
+	byte analogButtonData[ANALOG_BTN_DATA_SIZE];
+
+	boolean analogButtonDataValid;
+
 	virtual void attention () = 0;
-	
+
 	virtual void noAttention () = 0;
-	
+
 	virtual byte shiftInOut (const byte out) = 0;
 
 	void shiftInOut (const byte *out, byte *in, const byte len) {
@@ -87,27 +99,27 @@ protected:
 #endif
 
 		for (byte i = 0; i < len; ++i) {
-			byte tmp = shiftInOut (out[i]);
+			byte tmp = shiftInOut (out != NULL ? out[i] : 0x5A);
 #ifdef DUMP_COMMS
 			inbuf[i] = tmp;
 #endif
 			if (in != NULL) {
 				in[i] = tmp;
 			}
-			
+
 			delayMicroseconds (INTER_CMD_BYTE_DELAY);   // Very important!
 		}
-		
-#ifdef DUMP_COMMS		
+
+#ifdef DUMP_COMMS
 		Serial.print (F("<-- "));
 		for (byte i = 0; i < len; ++i) {
-			if (out[i] < 0x10)
+			if (out && out[i] < 0x10)
 				Serial.print (0);
-			Serial.print (out[i], HEX);
+			Serial.print (out ? out[i]: 0x5A, HEX);
 			Serial.print (' ');
 		}
 		Serial.println ();
-		
+
 		Serial.print (F("--> "));
 		for (byte i = 0; i < len; ++i) {
 			if (inbuf[i] < 0x10)
@@ -119,23 +131,73 @@ protected:
 #endif
 	}
 
-	inline boolean isValidReply (const byte *status) {
-		return status[0] != 0xFF || status[1] != 0xFF || status[2] != 0xFF;
+	byte *autoShift (const byte *out, const byte outlen) {
+		byte * ret = nullptr;
+
+		if (outlen >= 3 && outlen <= BUFFER_SIZE) {
+			// All commands have at least 3 bytes, so shift out those first
+			shiftInOut (out, inputBuffer, 3);
+			if (isValidReply (inputBuffer)) {
+				// Reply is good, get full length
+				byte replyLen = getReplyLength ();
+
+				// Shift out rest of command
+				if (outlen > 3) {
+					shiftInOut (out + 3, inputBuffer + 3, outlen - 3);
+				}
+
+				byte left = replyLen - outlen + 3;
+				//~ Serial.print ("len = ");
+				//~ Serial.print (replyLen);
+				//~ Serial.print (", left = ");
+				//~ Serial.println (left);
+				if (left == 0) {
+					// The whole reply was gathered
+					ret = inputBuffer;
+				} else if (outlen + left <= BUFFER_SIZE) {
+					// Part of reply is still missing and we have space for it
+					shiftInOut (NULL, inputBuffer + outlen, left);
+					ret = inputBuffer;
+				} else {
+					// Reply incomplete but not enough space provided
+				}
+			}
+		}
+
+		return ret;
 	}
 
-	// Maybe it'd be better to call this DualShock mode?
-	inline boolean isAnalogReply (const byte *status) {
+	byte getReplyLength () const {
+		return (inputBuffer[1] & 0x0F) * 2;
+	}
+
+	inline boolean isValidReply (const byte *status) {
+		//~ return status[0] != 0xFF || status[1] != 0xFF || status[2] != 0xFF;
+		return status[1] != 0xFF && (status[2] == 0x5A || status[2] == 0x00);
+		//~ return /* status[0] == 0xFF && */ status[1] != 0xFF && status[2] == 0x5A;
+	}
+
+	// Green Mode controllers
+	inline boolean isFlightstickReply (const byte *status) {
+		return (status[1] & 0xF0) == 0x50;
+	}
+
+	inline boolean isDualShockReply (const byte *status) {
 		return (status[1] & 0xF0) == 0x70;
 	}
-	
+
+	inline boolean isDualShock2Reply (const byte *status) {
+		return status[1] == 0x79;
+	}
+
 	inline boolean isDigitalReply (const byte *status) {
 		return (status[1] & 0xF0) == 0x40;
 	}
-	
+
 	inline boolean isConfigReply (const byte *status) {
-		return status[1] == 0xF3 /* && status[2] == 0x5A */;
+		return (status[1] & 0xF0) == 0xF0;
 	}
-	
+
 public:
 	virtual boolean begin () {
 		lx = 0;
@@ -143,8 +205,8 @@ public:
 		rx = 0;
 		ry = 0;
 
-		analogMode = false;
-		
+		analogSticksValid = false;
+
 		// Some disposable readings to let the controller know we are here
 		for (byte i = 0; i < 5; ++i) {
 			read ();
@@ -153,7 +215,190 @@ public:
 
 		return read ();
 	}
-	
+
+	boolean enterConfigMode () {
+		boolean ret = false;
+
+		unsigned long start = millis ();
+		do {
+			attention ();
+			byte *in = autoShift (enter_config, 4);
+			noAttention ();
+
+			ret = in != NULL && isConfigReply (in);
+
+			if (!ret) {
+				delay (COMMAND_RETRY_INTERVAL);
+			}
+		} while (!ret && millis () - start <= COMMAND_TIMEOUT);
+		delay (MODE_SWITCH_DELAY);
+
+		return ret;
+	}
+
+	boolean setAnalogMode (bool enabled = true, bool locked = false) {
+		boolean ret = false;
+		byte out[sizeof (set_mode)];
+
+		memcpy (out, set_mode, sizeof (set_mode));
+		out[3] = enabled ? 0x01 : 0x00;
+		out[4] = locked ? 0x03 : 0x00;
+
+		//~ attention ();
+		//~ byte *in = autoShift (out, 5);
+		//~ noAttention ();
+
+		//~ // Give controller some time to switch to set the requested mode
+		//~ delay (MODE_SWITCH_DELAY);
+
+		unsigned long start = millis ();
+		byte cnt = 0;
+		do {
+			attention ();
+			byte *in = autoShift (out, 5);
+			noAttention ();
+
+			/* We can't know if we have successfully enabled analog mode until
+			 * we get out of config mode, so let's just be happy if we get a few
+			 * consecutive valid replies
+			 */
+			if (in != nullptr) {
+				++cnt;
+			}
+			ret = cnt >= 3;
+
+			if (!ret) {
+				delay (COMMAND_RETRY_INTERVAL);
+			}
+		} while (!ret && millis () - start <= COMMAND_TIMEOUT);
+		delay (MODE_SWITCH_DELAY);
+
+		return ret;
+	}
+
+	bool enablePressures (bool enabled = true) {
+		boolean ret = false;
+		byte out[sizeof (set_mode)];
+
+		memcpy (out, set_pressures, sizeof (set_pressures));
+		if (!enabled) {
+			out[3] = 0x00;
+			out[4] = 0x00;
+			out[5] = 0x00;
+		}
+
+		unsigned long start = millis ();
+		byte cnt = 0;
+		do {
+			attention ();
+			byte *in = autoShift (out, sizeof (set_pressures));
+			noAttention ();
+
+			/* We can't know if we have successfully enabled analog mode until
+			 * we get out of config mode, so let's just be happy if we get a few
+			 * consecutive valid replies
+			 */
+			if (in != nullptr) {
+				++cnt;
+			}
+			ret = cnt >= 3;
+
+			if (!ret) {
+				delay (COMMAND_RETRY_INTERVAL);
+			}
+		} while (!ret && millis () - start <= COMMAND_TIMEOUT);
+		delay (MODE_SWITCH_DELAY);
+
+		return ret;
+	}
+
+	PsxControllerType getControllerType () {
+		PsxControllerType ret = PSCTRL_UNKNOWN;
+
+		attention ();
+		byte *in = autoShift (type_read, 3);
+		noAttention ();
+
+		if (in != nullptr) {
+			const byte& controllerType = in[3];
+			if (controllerType == 0x03) {
+				ret = PSCTRL_DUALSHOCK;
+			//~ } else if (controllerType == 0x01 && in[1] == 0x42) {
+				//~ return 4;		// ???
+			}  else if (controllerType == 0x01 && in[1] != 0x42) {
+				ret = PSCTRL_GUITHERO;
+			} else if (controllerType == 0x0C) {
+				ret = PSCTRL_DSWIRELESS;
+			}
+		}
+
+		return ret;
+	}
+
+	boolean exitConfigMode () {
+		boolean ret = false;
+
+		unsigned long start = millis ();
+		do {
+			attention ();
+			//~ shiftInOut (poll, in, sizeof (poll));
+			//~ shiftInOut (exit_config, in, sizeof (exit_config));
+			byte *in = autoShift (exit_config, 4);
+			noAttention ();
+
+			ret = in != nullptr && !isConfigReply (in);
+
+			if (!ret) {
+				delay (COMMAND_RETRY_INTERVAL);
+			}
+		} while (!ret && millis () - start <= COMMAND_TIMEOUT);
+		delay (MODE_SWITCH_DELAY);
+
+		return ret;
+	}
+
+	boolean read () {
+		boolean ret = false;
+
+		analogSticksValid = false;
+		analogButtonDataValid = false;
+
+		attention ();
+		byte *in = autoShift (poll, 3);
+		noAttention ();
+
+		if (in != NULL) {
+			if (isConfigReply (in)) {
+				// We're stuck in config mode, try to get out
+				exitConfigMode ();
+			} else {
+				// We surely have buttons
+				buttonWord = ((PsxButtons) in[4] << 8) | in[3];
+
+				if (isDualShockReply (in) || isFlightstickReply (in)) {
+					// We have analog stick data
+					analogSticksValid = true;
+					rx = in[5];
+					ry = in[6];
+					lx = in[7];
+					ly = in[8];
+
+					if (isDualShock2Reply (in)) {
+						// We also have analog button data
+						analogButtonDataValid = true;
+						for (int i = 0; i < ANALOG_BTN_DATA_SIZE; ++i) {
+							analogButtonData[i] = in[i + 9];
+						}
+					}
+				}
+
+				ret = true;
+			}
+		}
+
+		return ret;
+	}
+
 	PsxButtons getButtonWord () const {
 		return ~buttonWord;
 	}
@@ -162,14 +407,14 @@ public:
 		x = lx;
 		y = ly;
 
-		return analogMode;
+		return analogSticksValid;
 	}
 
 	boolean getRightAnalog (byte& x, byte& y) {
 		x = rx;
 		y = ry;
 
-		return analogMode;
+		return analogSticksValid;
 	}
 
 	boolean buttonPressed (PsxButtons buttonWordx, PsxButton button) {
@@ -183,164 +428,23 @@ public:
 	boolean noButtonPressed (PsxButtons buttons) {
 		return buttons == PSB_NONE;
 	}
-	
+
 	boolean noButtonPressed (void) {
 		return buttonWord == ~PSB_NONE;
 	}
-	
-	boolean enterConfigMode () {
-		boolean ret = false;
-		byte in[sizeof (enter_config)];
 
-		unsigned long start = millis ();
-		do {
-			attention ();
-			shiftInOut (enter_config, in, sizeof (enter_config));
-			noAttention ();
-
-			ret = isValidReply (in) && isConfigReply (in);
-
-			if (!ret) {
-				delay (COMMAND_RETRY_INTERVAL);
-			}
-		} while (!ret && millis () - start <= COMMAND_TIMEOUT);
-		delay (MODE_SWITCH_DELAY);
-
-		return ret;
-	}
-	
-	boolean setAnalogMode (bool enabled = true, bool locked = false) {
-		boolean ret = false;
-		byte out[sizeof (set_mode)];
-		byte in[sizeof (set_mode)];
+	byte getAnalogButton (PsxButton button) {
+		byte ret = 0;
 		
-		memcpy (out, set_mode, sizeof (set_mode));
-		out[3] = enabled ? 0x01 : 0x00;
-		out[4] = locked ? 0x03 : 0x00;
-		
-		attention ();
-		shiftInOut (out, in, sizeof (set_mode));
-		noAttention ();
-		
-		// Give controller some time to switch to set the requested mode
-		delay (MODE_SWITCH_DELAY);
-
-		unsigned long start = millis ();
-		byte cnt = 0;
-		do {
-			attention ();
-			shiftInOut (out, in, sizeof (set_mode));
-			noAttention ();
-
-			/* We can't know if we have successfully enabled analog mode until
-			 * we get out of config mode, so let's just be happy if we get a few
-			 * consecutive valid replies
-			 */
-			if (isValidReply (in)) {
-				++cnt;
-			}
-			ret = cnt >= 3;
-
-			if (!ret) {
-				delay (COMMAND_RETRY_INTERVAL);
-			}
-		} while (!ret && millis () - start <= COMMAND_TIMEOUT);
-		delay (MODE_SWITCH_DELAY);
-		
-		return ret;
-	}
-	
-	PsxControllerType getControllerType () {
-		byte in[sizeof (type_read)];
-		
-		attention ();
-		shiftInOut (type_read, in, sizeof (type_read));
-		noAttention ();
-		
-		const byte& controllerType = in[3];
-		if (controllerType == 0x03) {
-			return PSCTRL_DUALSHOCK;
-		//~ } else if (controllerType == 0x01 && in[1] == 0x42) {
-			//~ return 4;		// ???
-		}  else if (controllerType == 0x01 && in[1] != 0x42) {
-			return PSCTRL_GUITHERO;
-		} else if (controllerType == 0x0C) {
-			return PSCTRL_DSWIRELESS;
+		if (analogButtonDataValid) {
+			ret = analogButtonData[7];
+		} else if (buttonPressed (button)) {
+			// No analog data, assume fully pressed or fully released
+			ret = 0xFF;
 		}
-		
-		return PSCTRL_UNKNOWN;
-	}
-	
-	void enablePressures () {
-		byte in[sizeof (set_pressures)];
-		
-		attention ();
-		shiftInOut (set_pressures, in, sizeof (set_pressures));
-		noAttention ();
-		
-		//~ delay (1000);
-	}
-	
-	boolean exitConfigMode () {
-		boolean ret = false;
-		byte in[sizeof (exit_config)];
 
-		unsigned long start = millis ();
-		do {
-			attention ();
-			//~ shiftInOut (poll, in, sizeof (poll));
-			shiftInOut (exit_config, in, sizeof (exit_config));
-			noAttention ();
-			
-			ret = isValidReply (in) && !isConfigReply (in);
-
-			if (!ret) {
-				delay (COMMAND_RETRY_INTERVAL);
-			}
-		} while (!ret && millis () - start <= COMMAND_TIMEOUT);
-		delay (MODE_SWITCH_DELAY);
-		
 		return ret;
-	}
-
-	boolean read () {
-		boolean ret = false;
-		byte in[21];
-
-		attention ();
-		shiftInOut (poll, in, sizeof (poll));
-		
-		if (isAnalogReply (in)) {
-			// If controller is in full data mode, get the rest of data
-
-			// Just send zeros
-			byte tmp[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-			shiftInOut (tmp, in + sizeof (poll), sizeof (tmp));
-			
-			ret = true;
-		} else if (isDigitalReply (in)) {
-			ret = true;
-		}
-		
-		noAttention ();
-
-		if (ret) {
-			buttonWord = ((PsxButtons) in[4] << 8) | in[3];
-
-			if (isAnalogReply (in)) {
-				analogMode = true;
-				rx = in[5];
-				ry = in[6];
-				lx = in[7];
-				ly = in[8];
-			}
-		} else if (isConfigReply (in)) {
-			// We're stuck in config mode, try to get out
-			exitConfigMode ();
-		} else {
-			analogMode = false;
-		}
-	 
-		return ret;
-	}
+	}	
 };
+
+#endif
