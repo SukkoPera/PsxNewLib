@@ -168,15 +168,18 @@ void loop () {
 				Serial.println (PSTR_TO_F (cname));
 
 				if (!psx.setAnalogMode ()) {
-					Serial.println (F("Cannot enable analog mode"));
+					Serial.println (F("Cannot enable analog sticks"));
 				}
 				
 				//~ if (!psx.setAnalogMode (false)) {
 					//~ Serial.println (F("Cannot disable analog mode"));
 				//~ }
 				//~ delay (10);
-				//~ psx.enablePressures ();
-								
+				
+				if (!psx.enablePressures ()) {
+					Serial.println (F("Cannot enable analog buttons"));
+				}
+				
 				if (!psx.exitConfigMode ()) {
 					Serial.println (F("Cannot exit config mode"));
 				}
@@ -207,6 +210,10 @@ void loop () {
 				srx = rx;
 				sry = ry;
 			}
+
+			byte x = psx.getAnalogButton (PSB_BLUE);
+			if (x)
+				Serial.println (x);
 		}
 	}
 

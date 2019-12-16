@@ -6,7 +6,7 @@
  * Time between attention being issued to the controller and the first clock
  * edge.
  */
-const byte ATTN_DELAY = 4;
+const byte ATTN_DELAY = 10;
 
 /** \brief Clock Period
  *
@@ -16,7 +16,7 @@ const byte ATTN_DELAY = 4;
 const byte CLK_PERIOD = 40;
 
 // Must be < CLK_PERIOD / 2
-const byte HOLD_TIME = 0;
+const byte HOLD_TIME = 2;
 
 
 template <uint8_t PIN_ATT, uint8_t PIN_CMD, uint8_t PIN_DAT, uint8_t PIN_CLK>
