@@ -1,7 +1,4 @@
-# PsxNewLib
-Playstation controller interface library for Arduino
-
-# Playstation controller interface library for Arduino
+# PsxNewLib - Playstation controller interface library for Arduino
 PsxNewLib is a Arduino library that allows interfacing many controllers designed for the Sony PlayStation and PlayStation 2 with Arduino boards.
 
 When I started developing my [PlayStation to Commodore adapter](https://github.com/SukkoPera/OpenPSX2AmigaPadAdapter), I originally used the [famous library by Bill Porter](http://www.billporter.info/2010/06/05/playstation-2-controller-arduino-library-v1-0/) to interface with the controller. This seemed to well initially, but then a number of issues surfaced:
@@ -27,22 +24,22 @@ First of all you must decide whether you want to use the hardware SPI pins or no
 ## Compatibility List
 PsxNewLib aims to be compatible with all devices. I expect this to be the case with all the official controllers produced by Sony. Third-party devices should also work anyway. If you find one that doesn't work, please open an issue and I'll do my best to add support for it.
 
-|Manufacturer|Model                                          |Supported|Notes                                |
-|------------|-----------------------------------------------|---------|-------------------------------------|
-|Sony        |PlayStation Controller (SCPH-1010)             |![Yes](img/yes.png)    |                                     |
-|Sony        |Revised PlayStation Controller (SCPH-1080)     |         |                                     |
-|Sony        |Analog Joystick (SCPH-1110)                    |![Yes](img/yes.png)    |Informally known as the *Flighstick*.|
-|Sony        |Dual Analog Controller (Japan, SCPH-1150)      |         |                                     |
-|Sony        |Dual Analog Controller (USA, SCPH-1180)        |         |                                     |
-|Sony        |Dual Analog Controller (Europe, SCPH-1180e)    |         |                                     |
-|Sony        |DualShock Analog Controller (SCPH-1200)        |![Yes](img/yes.png)    |                                     |
-|Sony        |DualShock 2 Analog Controller (SCPH-10010)     |![Yes](img/yes.png)    |                                     |
-|Sony        |DualShock Controller for PSOne (SCPH-110)      |         |                                     |
-|Asciiware   |Arcade Stick                                   |![Yes](img/yes.png)    |                                     |
-|Namco       |Arcade Stick                                   |![Yes](img/yes.png)    |                                     |
-|Logitech    |Cordless Action                                |         |                                     |
-|Namco       |Negcon (NPC-101)                               |No       |Looking for one                      |
-|EastVita    |Wireless Controller                            |![Yes](img/yes.png)    |Chinese knock-off, cheap but with surprising quality, pretty similar to the Lynxmotion controller, probably goes under other names, too |
+|Manufacturer|Model                                          |Supported              |Notes                                                                                                                                  |
+|------------|-----------------------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+|Sony        |PlayStation Controller (SCPH-1010)             |![Yes](img/yes.png)    |                                                                                                                                       |
+|Sony        |Revised PlayStation Controller (SCPH-1080)     |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
+|Sony        |Analog Joystick (SCPH-1110)                    |![Yes](img/yes.png)    |Informally known as the *Flighstick*                                                                                                   |
+|Sony        |Dual Analog Controller (Japan, SCPH-1150)      |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
+|Sony        |Dual Analog Controller (USA, SCPH-1180)        |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
+|Sony        |Dual Analog Controller (Europe, SCPH-1180e)    |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
+|Sony        |DualShock Analog Controller (SCPH-1200)        |![Yes](img/yes.png)    |                                                                                                                                       |
+|Sony        |DualShock 2 Analog Controller (SCPH-10010)     |![Yes](img/yes.png)    |                                                                                                                                       |
+|Sony        |DualShock Controller for PSOne (SCPH-110)      |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
+|Asciiware   |Arcade Stick                                   |![Yes](img/yes.png)    |                                                                                                                                       |
+|Namco       |Arcade Stick                                   |![Yes](img/yes.png)    |                                                                                                                                       |
+|Logitech    |Cordless Action                                |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
+|Namco       |Negcon (NPC-101)                               |![No](img/no.png)      |Looking for one                                                                                                                        |
+|EastVita    |Wireless Controller                            |![Yes](img/yes.png)    |Chinese knock-off, cheap but with surprising quality, pretty similar to the Lynxmotion controller, probably goes under other names, too|
 
 ## Debugging
 If you have problems, uncomment the DUMP_COMMS #define in [https://github.com/SukkoPera/PsxNewLib/blob/autoshift/src/PsxNewLib.h#L33](PsxNewLib.h) and watch your serial monitor.
