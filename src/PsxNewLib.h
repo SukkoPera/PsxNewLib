@@ -362,6 +362,18 @@ protected:
 	}
 
 public:
+	/** \brief Initialize library
+	 * 
+	 * This function shall be called before any others, it will initialize the
+	 * communication and return if a supported controller was found. It shall
+	 * also be called to reinitialize the communication whenever the controller
+	 * is unplugged.
+	 * 
+	 * Derived classes can override this function if they need to perform
+	 * additional initializations, but shall call it on return.
+	 * 
+	 * \return true if a supported controller was found, false otherwise
+	 */
 	virtual boolean begin () {
 		lx = 0;
 		ly = 0;
@@ -379,6 +391,19 @@ public:
 		return read ();
 	}
 
+	//! \name Configuration Mode Functions
+	//! @{
+	
+	/** \brief Enter Configuration Mode
+	 * 
+	 * Some controllers can be configured in several aspects. For instance,
+	 * DualShock controllers can return analog stick data. This function puts
+	 * the controller in configuration mode.
+	 * 
+	 * Note that <i>Configuration Mode</i> is sometimes called <i>Escape Mode</i>.
+	 * 
+	 * \return true if Configuration Mode was entered successfully
+	 */
 	boolean enterConfigMode () {
 		boolean ret = false;
 
@@ -520,7 +545,6 @@ public:
 	 * This function will only work if when the controller is in Configuration
 	 * Mode.
 	 * 
-	 * \param[in] enabled true to enable, false to disable
 	 * \return The (tentative) controller type
 	 */
 	PsxControllerType getControllerType () {
@@ -568,6 +592,29 @@ public:
 		return ret;
 	}
 
+	//! @}		// Configuration Mode Functions
+	
+	//! \name Polling Functions
+	//! @{
+
+	/** \brief Poll the controller
+	 * 
+	 * This function polls the controller for button and stick data. It self-
+	 * adapts to all the supported controller types and populates internal
+	 * variables with the retrieved information, which can be later accessed
+	 * through the inspection functions.
+	 * 
+	 * This function must be called quite often in order to keep the controller
+	 * alive. Most controllers have some kind of watchdog that will reset them
+	 * if they don't get polled at least every so often (like a couple dozen
+	 * times per seconds).
+	 * 
+	 * If this function fails repeatedly, it can safely be assumed that the
+	 * controller has been disconnected (or that it is not supported if it
+	 * failed right from the beginning).
+	 * 
+	 * \return true if the read was successful, false otherwise
+	 */
 	boolean read () {
 		boolean ret = false;
 
@@ -610,41 +657,72 @@ public:
 		return ret;
 	}
 
+	/** \brief Check if a button is pressed in a Button Word
+	 * 
+	 * \param[in] buttons The button word to check in
+	 * \param[in] button The button to be checked
+	 * \return true if \a button is pressed in \a buttons, false otherwise
+	 */
+	boolean buttonPressed (const PsxButtons buttons, const PsxButton button) const {
+		return ((buttons & static_cast<const PsxButtons> (button)) > 0);
+	}
+
+	/** \brief Check if a button is currently pressed
+	 * 
+	 * \param[in] button The button to be checked
+	 * \return true if \a button was pressed in last call to read(), false
+	 *         otherwise
+	 */
+	boolean buttonPressed (const PsxButton button) const {
+		return buttonPressed (~buttonWord, button);
+	}
+
+	/** \brief Check if NO button is pressed in a Button Word
+	 * 
+	 * \param[in] buttons The button word to check in
+	 * \return true if all buttons in \a buttons are released, false otherwise
+	 */
+	boolean noButtonPressed (const PsxButtons buttons) const {
+		return buttons == PSB_NONE;
+	}
+
+	/** \brief Check if NO button is currently pressed
+	 * 
+	 * \return true if all buttons were released in the last call to read(),
+	 *         false otherwise
+	 */
+	boolean noButtonPressed (void) const {
+		return buttonWord == ~PSB_NONE;
+	}
+	
+	/** \brief Retrieve the <em>Button Word</em>
+	 * 
+	 * The button word contains the status of all digital buttons and can be
+	 * retrieved so that it can be inspected later.
+	 * 
+	 * \sa buttonPressed
+	 * \sa noButtonPressed
+	 * 
+	 * \return the Button Word
+	 */
 	PsxButtons getButtonWord () const {
 		return ~buttonWord;
 	}
 
-	boolean getLeftAnalog (byte& x, byte& y) {
-		x = lx;
-		y = ly;
-
-		return analogSticksValid;
-	}
-
-	boolean getRightAnalog (byte& x, byte& y) {
-		x = rx;
-		y = ry;
-
-		return analogSticksValid;
-	}
-
-	boolean buttonPressed (PsxButtons buttonWordx, PsxButton button) {
-		return ((buttonWordx & static_cast<PsxButtons> (button)) > 0);
-	}
-
-	boolean buttonPressed (PsxButton button) {
-		return buttonPressed (~buttonWord, button);
-	}
-
-	boolean noButtonPressed (PsxButtons buttons) {
-		return buttons == PSB_NONE;
-	}
-
-	boolean noButtonPressed (void) {
-		return buttonWord == ~PSB_NONE;
-	}
-
-	byte getAnalogButton (PsxButton button) {
+	/** \brief Retrieve button pressure depth/strength
+	 * 
+	 * This function will return how deeply/strongly a button is pressed. It
+	 * will only work on DualShock 2 controllers after enabling this feature
+	 * with enableAnalogButtons().
+	 * 
+	 * Note that button pressure depth/strength is only available for the D-Pad
+	 * buttons, []/^/O/X, L1/2 and R1/2.
+	 *
+	 * \param[in] button the button the retrieve the pressure depth/strength of
+	 * \return the pressure depth/strength [0-255, Fully released to fully
+	 *         pressed]
+	 */
+	byte getAnalogButton (const PsxButton button) const {
 		byte ret = 0;
 		
 		if (analogButtonDataValid) {
@@ -655,7 +733,50 @@ public:
 		}
 
 		return ret;
-	}	
+	}
+
+	/** \brief Retrieve position of the \a left analog stick
+	 * 
+	 * This function will return the absolute position of the left analog stick.
+	 * 
+	 * Note that not all controllers have analog sticks, in which case this
+	 * function will return false.
+	 * 
+	 * \param[in] x A variable where the horizontal position will be stored
+	 *              [0-255, L to R]
+	 * \param[in] y A variable where the vertical position will be stored
+	 *              [0-255, U to D]
+	 * \return true if the returned position is valid, false otherwise
+	 */
+	boolean getLeftAnalog (byte& x, byte& y) const {
+		x = lx;
+		y = ly;
+
+		return analogSticksValid;
+	}
+
+	/** \brief Retrieve position of the \a right analog stick
+	 * 
+	 * This function will return the absolute position of the right analog
+	 * stick.
+	 * 
+	 * Note that not all controllers have analog sticks, in which case this
+	 * function will return false.
+	 * 
+	 * \param[in] x A variable where the horizontal position will be stored
+	 *              [0-255, L to R]
+	 * \param[in] y A variable where the vertical position will be stored
+	 *              [0-255, U to D]
+	 * \return true if the returned position is valid, false otherwise
+	 */
+	boolean getRightAnalog (byte& x, byte& y) {
+		x = rx;
+		y = ry;
+
+		return analogSticksValid;
+	}
+	
+	//! @}		// Polling Functions
 };
 
 #endif
