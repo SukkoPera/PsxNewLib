@@ -167,7 +167,7 @@ void loop () {
 				Serial.print (F("Controller Type is: "));
 				Serial.println (PSTR_TO_F (cname));
 
-				if (!psx.setAnalogMode ()) {
+				if (!psx.enableAnalogSticks ()) {
 					Serial.println (F("Cannot enable analog sticks"));
 				}
 				
@@ -176,7 +176,7 @@ void loop () {
 				//~ }
 				//~ delay (10);
 				
-				if (!psx.enablePressures ()) {
+				if (!psx.enableAnalogButtons ()) {
 					Serial.println (F("Cannot enable analog buttons"));
 				}
 				
