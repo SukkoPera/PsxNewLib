@@ -1,22 +1,47 @@
 #ifndef PSXNEWLIB_H_
 #define PSXNEWLIB_H_
 
+// Uncomment this to have all byte exchanges logged to serial
 //~ #define DUMP_COMMS
 
-// us
+/** \brief Command Inter-Byte Delay (us)
+ * 
+ * Commands are several bytes long. This is the time to wait between two
+ * consecutive bytes.
+ * 
+ * This should actually be done by watching the \a Acknowledge line, but we are
+ * ignoring it at the moment.
+ */
 const byte INTER_CMD_BYTE_DELAY = 15;
 
-// ms
+/** \brief Command timeout (ms)
+ * 
+ * Commands are sent to the controller repeatedly, until they succeed or time
+ * out. This is the length of that timeout.
+ * 
+ * \sa COMMAND_RETRY_INTERVAL
+ */
 const unsigned long COMMAND_TIMEOUT = 250;
 
-// ms
+/** \brief Command Retry Interval (ms)
+ * 
+ * When sending a command to the controller, if it does not succeed, it is
+ * retried after this amount of time.
+ */
 const unsigned long COMMAND_RETRY_INTERVAL = 10;
 
-// ms
+/** \brief Mode switch delay (ms)
+ * 
+ * After a command has been issued successfully to the controller, this amount
+ * of time is waited to allow it to complete any internal procedures required to
+ * execute the command.
+ * 
+ * \todo This is probably unnecessary.
+ */
 const unsigned long MODE_SWITCH_DELAY = 500;
 
 
-/** \brief Type that is used to report button presses
+/** \brief Type that is used to represent a single button
  */
 enum PsxButton {
 	PSB_NONE       = 0x0000,
@@ -42,8 +67,17 @@ enum PsxButton {
 	PSB_SQUARE     = 0x8000
 };
 
+/** \brief Type that is used to report button presses
+ */
 typedef uint16_t PsxButtons;
 
+//! \name Controller Commands
+//! @{
+/** \brief Enter Configuration Mode
+ * 
+ * Command used to enter the controller configuration (also known as \a escape)
+ * mode
+ */
 static byte enter_config[] = {0x01, 0x43, 0x00, 0x01, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A};
 static byte exit_config[] = {0x01, 0x43, 0x00, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A};
 /* These shorter versions of enter_ and exit_config are accepted by all
@@ -52,11 +86,25 @@ static byte exit_config[] = {0x01, 0x43, 0x00, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5
  */
 //~ static byte enter_config[] = {0x01, 0x43, 0x00, 0x01, 0x00};
 //~ static byte exit_config[] = {0x01, 0x43, 0x00, 0x00, 0x00};
+
+/** \brief Read Controller Type
+ * 
+ * Command used to read the controller type.
+ * 
+ * This does not seem to be 100% reliable, or at least we don't know how to tell
+ * all the various controllers apart.
+ */
 static byte type_read[] = {0x01, 0x45, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A};
 static byte set_mode[] = {0x01, 0x44, 0x00, /* enabled */ 0x01, /* locked */ 0x03, 0x00, 0x00, 0x00, 0x00};
 static byte set_pressures[] = {0x01, 0x4F, 0x00, 0xFF, 0xFF, 0x03, 0x00, 0x00, 0x00};
 //~ static byte enable_rumble[] = {0x01, 0x4D, 0x00, 0x00, 0x01};
+
+/** \brief Poll all buttons
+ * 
+ * Command used to read the status of all buttons.
+ */
 static byte poll[] = {0x01, 0x42, 0x00, 0xFF, 0xFF};
+//! @}
 
 enum PsxControllerType {
 	PSCTRL_UNKNOWN = 0,
@@ -236,20 +284,39 @@ public:
 		return ret;
 	}
 
-	boolean setAnalogMode (bool enabled = true, bool locked = false) {
+	/** \brief Enable (or disable) analog sticks
+	 * 
+	 * This function enables or disables the analog sticks that were introduced
+	 * with Dual Shock controllers. When they are enabled, the getLeftAnalog()
+	 * and getRightAnalog() functions can be used to retrieve their positions.
+	 * Also, button presses for L3 and R3 will be available through the
+	 * buttonPressed() and similar functions.
+	 * 
+	 * When analog sticks are enabled, the \a ANALOG led will light up (in red)
+	 * on the controller.
+	 * 
+	 * Note that on some third-party controllers, when analog sticks are
+	 * disabled the analog levers will "emulate" the D-Pad and possibly the
+	 * []/^/O/X buttons. This does not happen on official Sony controllers.
+	 * 
+	 * This function will only work if when the controller is in Configuration
+	 * Mode.
+	 * 
+	 * \param[in] enabled true to enable, false to disable
+	 * \param[in] locked If true, the \a ANALOG button on the controller will be
+	 *                   disabled and the user will not be able to turn off the
+	 *                   analog sticks.
+	 * \return true if the command was ackowledged by the controller. Note that
+	 *         this does not fully guarantee that the analog sticks were enabled
+	 *         as this can only be checked after Configuration Mode is exited.
+	 */
+	boolean enableAnalogSticks (bool enabled = true, bool locked = false) {
 		boolean ret = false;
 		byte out[sizeof (set_mode)];
 
 		memcpy (out, set_mode, sizeof (set_mode));
 		out[3] = enabled ? 0x01 : 0x00;
 		out[4] = locked ? 0x03 : 0x00;
-
-		//~ attention ();
-		//~ byte *in = autoShift (out, 5);
-		//~ noAttention ();
-
-		//~ // Give controller some time to switch to set the requested mode
-		//~ delay (MODE_SWITCH_DELAY);
 
 		unsigned long start = millis ();
 		byte cnt = 0;
@@ -276,7 +343,23 @@ public:
 		return ret;
 	}
 
-	bool enablePressures (bool enabled = true) {
+	/** \brief Enable (or disable) analog buttons
+	 * 
+	 * This function enables or disables the analog buttons that were introduced
+	 * with Dual Shock 2 controllers. When they are enabled, the
+	 * getAnalogButton() functions can be used to retrieve how deep/strongly
+	 * they are pressed. This applies to the D-Pad buttons, []/^/O/X, L1/2 and
+	 * R1/2
+	 * 
+	 * This function will only work if when the controller is in Configuration
+	 * Mode.
+	 * 
+	 * \param[in] enabled true to enable, false to disable
+	 * \return true if the command was ackowledged by the controller. Note that
+	 *         this does not fully guarantee that the analog sticks were enabled
+	 *         as this can only be checked after Configuration Mode is exited.
+	 */
+	bool enableAnalogButtons (bool enabled = true) {
 		boolean ret = false;
 		byte out[sizeof (set_mode)];
 
@@ -312,6 +395,19 @@ public:
 		return ret;
 	}
 
+	/** \brief Retrieve the controller type
+	 * 
+	 * This function retrieves the controller type. It is not 100% reliable, so
+	 * do not rely on it for anything other than a vague indication (for
+	 * instance, the DualShock SCPH-1200 controller gets reported as the Guitar
+	 * Hero controller...).
+	 * 
+	 * This function will only work if when the controller is in Configuration
+	 * Mode.
+	 * 
+	 * \param[in] enabled true to enable, false to disable
+	 * \return The (tentative) controller type
+	 */
 	PsxControllerType getControllerType () {
 		PsxControllerType ret = PSCTRL_UNKNOWN;
 
