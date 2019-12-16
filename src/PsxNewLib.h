@@ -1,3 +1,31 @@
+/*******************************************************************************
+ * This file is part of PsxNewLib.                                             *
+ *                                                                             *
+ * Copyright (C) 2019 by SukkoPera <software@sukkology.net>                    *
+ *                                                                             *
+ * PsxNewLib is free software: you can redistribute it and/or                  *
+ * modify it under the terms of the GNU General Public License as published by *
+ * the Free Software Foundation, either version 3 of the License, or           *
+ * (at your option) any later version.                                         *
+ *                                                                             *
+ * PsxNewLib is distributed in the hope that it will be useful,                *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of              *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               *
+ * GNU General Public License for more details.                                *
+ *                                                                             *
+ * You should have received a copy of the GNU General Public License           *
+ * along with PsxNewLib. If not, see http://www.gnu.org/licenses.              *
+ ******************************************************************************/
+/**
+ * \file PsxNewLib.h
+ * \author SukkoPera <software@sukkology.net>
+ * \date 16 Dec 2019
+ * \brief Playstation controller interface library for Arduino
+ * 
+ * Please refer to the GitHub page and wiki for any information:
+ * https://github.com/SukkoPera/PsxNewLib
+ */
+
 #ifndef PSXNEWLIB_H_
 #define PSXNEWLIB_H_
 
@@ -115,32 +143,95 @@ enum PsxControllerType {
 	PSCTRL_MAX
 };
 
+/** \brief PSX Controller Interface
+ * 
+ * This is the base class implementing interactions with PSX controllers. It is
+ * partially abstract, so it is not supposed to be instantiated directly.
+ */
 class PsxController {
 protected:
+	/** \brief Size of internal communication buffer
+	 * 
+	 * This can be sized after the longest command reply (which is 21 bytes for
+	 * 01 42 when in DualShock 2 mode), but we're better safe than sorry.
+	 */
 	static const byte BUFFER_SIZE = 32;
+
+	/** \brief Size of buffer holding analog button data
+	 */
 	static const byte ANALOG_BTN_DATA_SIZE = 12;
 
+	/** \brief Internal communication buffer
+	 * 
+	 * This is used to hold replies received from the controller.
+	 */
 	byte inputBuffer[BUFFER_SIZE];
 
+	/** \brief (Digital) Button status
+	 * 
+	 * The individual bits can be identified through #PsxButton.
+	 */
 	PsxButtons buttonWord;
 
-	byte lx;
-	byte ly;
-	byte rx;
-	byte ry;
-
-	boolean analogSticksValid;
+	//! \name Analog Stick Data
+	//! @{
+	byte lx;		//!< Horizontal axis of left stick [0-255, L to R]
+	byte ly;		//!< Vertical axis of left stick [0-255, U to D]
+	byte rx;		//!< Horizontal axis of right stick [0-255, L to R]
+	byte ry;		//!< Vertical axis of right stick [0-255, U to D]
 	
+	boolean analogSticksValid;	//!< True if the above were valid in last call to read()
+	//! @}
+	
+	/** \brief Analog Button Data
+	 * 
+	 * \todo What's the meaning of every individual byte?
+	 */
 	byte analogButtonData[ANALOG_BTN_DATA_SIZE];
 
+	/** \brief Analog Button Data Validity
+	 * 
+	 * True if the #analogButtonData were valid in last call to read()
+	 */
 	boolean analogButtonDataValid;
 
+	/** \brief Assert the Attention line
+	 * 
+	 * This function must be implemented by derived classes and must set the
+	 * Attention line \a low so that the controller will pay attention to what
+	 * we will send.
+	 */
 	virtual void attention () = 0;
 
+	/** \brief Deassert the Attention line
+	 * 
+	 * This function must be implemented by derived classes and must set the
+	 * Attention line \a high so that the controller will no longer pay
+	 * attention to what we will send.
+	 */
 	virtual void noAttention () = 0;
 
+	/** \brief Transfer a single byte to/from the controller
+	 * 
+	 * This function must be implemented by derived classes and must transfer
+	 * a single <i>command</i> byte to the controller and read back a single
+	 * <i>data</i> byte.
+	 * 
+	 * \param[in] out The command byte to send the controller
+	 * \return The data byte returned by the controller
+	 */
 	virtual byte shiftInOut (const byte out) = 0;
 
+	/** \brief Transfer several bytes to/from the controller
+	 * 
+	 * This function transfers an array of <i>command</i> bytes to the
+	 * controller and reads back an equally sized array of <i>data</i> bytes.
+	 * 
+	 * \param[in] out The command bytes to send the controller
+	 * \param[out] in The data bytes returned by the controller, must be sized
+	 *                 to hold at least \a len bytes
+	 * \param[in] len The amount of bytes to be exchanged
+	 */
 	void shiftInOut (const byte *out, byte *in, const byte len) {
 #ifdef DUMP_COMMS
 		byte inbuf[len];
@@ -179,22 +270,38 @@ protected:
 #endif
 	}
 
-	byte *autoShift (const byte *out, const byte outlen) {
-		byte * ret = nullptr;
+	/** \brief Transfer several bytes to/from the controller
+	 * 
+	 * This function transfers an array of <i>command</i> bytes to the
+	 * controller and reads back the full reply of <i>data</i> bytes. The size
+	 * of the reply is calculated automatically and padding bytes (0x5A) are
+	 * appended to the outgoing message if it is shorter.
+	 * 
+	 * The reply is stored in an internal buffer and will be valid until the
+	 * next call to this function, so make sure to save anything if is needed.
+	 * 
+	 * \param[out] out The data bytes returned by the controller, must be sized
+	 *                 to hold at least \a len bytes
+	 * \param[in] len The amount of bytes to be exchanged
+	 * \return A pointer to a buffer containing the reply, whose size can be
+	 *         calculated with getReplyLength()
+	 */
+	byte *autoShift (const byte *out, const byte len) {
+		byte *ret = nullptr;
 
-		if (outlen >= 3 && outlen <= BUFFER_SIZE) {
+		if (len >= 3 && len <= BUFFER_SIZE) {
 			// All commands have at least 3 bytes, so shift out those first
 			shiftInOut (out, inputBuffer, 3);
 			if (isValidReply (inputBuffer)) {
 				// Reply is good, get full length
-				byte replyLen = getReplyLength ();
+				byte replyLen = getReplyLength (inputBuffer);
 
 				// Shift out rest of command
-				if (outlen > 3) {
-					shiftInOut (out + 3, inputBuffer + 3, outlen - 3);
+				if (len > 3) {
+					shiftInOut (out + 3, inputBuffer + 3, len - 3);
 				}
 
-				byte left = replyLen - outlen + 3;
+				byte left = replyLen - len + 3;
 				//~ Serial.print ("len = ");
 				//~ Serial.print (replyLen);
 				//~ Serial.print (", left = ");
@@ -202,9 +309,9 @@ protected:
 				if (left == 0) {
 					// The whole reply was gathered
 					ret = inputBuffer;
-				} else if (outlen + left <= BUFFER_SIZE) {
+				} else if (len + left <= BUFFER_SIZE) {
 					// Part of reply is still missing and we have space for it
-					shiftInOut (NULL, inputBuffer + outlen, left);
+					shiftInOut (NULL, inputBuffer + len, left);
 					ret = inputBuffer;
 				} else {
 					// Reply incomplete but not enough space provided
@@ -215,8 +322,16 @@ protected:
 		return ret;
 	}
 
-	byte getReplyLength () const {
-		return (inputBuffer[1] & 0x0F) * 2;
+	/** \brief Get reply length
+	 * 
+	 * Calculates the length of a command reply, in bytes
+	 * 
+	 * \param[in] buf The buffer containing the reply, must be at least 2 bytes
+	 *                long
+	 * \return The calculated length
+	 */
+	byte getReplyLength (const byte *buf) const {
+		return (buf[1] & 0x0F) * 2;
 	}
 
 	inline boolean isValidReply (const byte *status) {
@@ -287,7 +402,7 @@ public:
 	/** \brief Enable (or disable) analog sticks
 	 * 
 	 * This function enables or disables the analog sticks that were introduced
-	 * with Dual Shock controllers. When they are enabled, the getLeftAnalog()
+	 * with DualShock controllers. When they are enabled, the getLeftAnalog()
 	 * and getRightAnalog() functions can be used to retrieve their positions.
 	 * Also, button presses for L3 and R3 will be available through the
 	 * buttonPressed() and similar functions.
@@ -346,7 +461,7 @@ public:
 	/** \brief Enable (or disable) analog buttons
 	 * 
 	 * This function enables or disables the analog buttons that were introduced
-	 * with Dual Shock 2 controllers. When they are enabled, the
+	 * with DualShock 2 controllers. When they are enabled, the
 	 * getAnalogButton() functions can be used to retrieve how deep/strongly
 	 * they are pressed. This applies to the D-Pad buttons, []/^/O/X, L1/2 and
 	 * R1/2
@@ -359,7 +474,7 @@ public:
 	 *         this does not fully guarantee that the analog sticks were enabled
 	 *         as this can only be checked after Configuration Mode is exited.
 	 */
-	bool enableAnalogButtons (bool enabled = true) {
+	boolean enableAnalogButtons (bool enabled = true) {
 		boolean ret = false;
 		byte out[sizeof (set_mode)];
 
