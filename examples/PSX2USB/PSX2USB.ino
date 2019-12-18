@@ -91,6 +91,10 @@ void setup () {
 	usbStick.setRyAxisRange (0, 255);
 
 	Serial.begin (115200);
+	while (!Serial) {
+		digitalWrite (LED_BUILTIN, (millis () / 500) % 2);
+	}
+
 	Serial.println (F("Ready!"));
 }
 
@@ -98,7 +102,6 @@ void loop () {
 	if (!haveController) {
 		if (psx.begin ()) {
 			Serial.println (F("Controller found!"));
-			delay (300);
 			if (!psx.enterConfigMode ()) {
 				Serial.println (F("Cannot enter config mode"));
 			} else {
@@ -137,7 +140,7 @@ void loop () {
 			usbStick.setButton (7, psx.buttonPressed (PSB_R2));
 			usbStick.setButton (8, psx.buttonPressed (PSB_SELECT));
 			usbStick.setButton (9, psx.buttonPressed (PSB_START));
-			usbStick.setButton (10, psx.buttonPressed (PSB_L3));		// Only available on DualSchock and later controllers
+			usbStick.setButton (10, psx.buttonPressed (PSB_L3));		// Only available on DualShock and later controllers
 			usbStick.setButton (11, psx.buttonPressed (PSB_R3));		// Ditto
 
 			// D-Pad makes up the X/Y axes
@@ -187,8 +190,18 @@ void loop () {
 				if (rx == 0 && ry == 0) {
 					usbStick.setHatSwitch (0, JOYSTICK_HATSWITCH_RELEASE);
 				} else {
+					/* atan2() will yield something between -PI and +PI, so we
+					 * add 2*PI first to make it always positive, and then we
+					 * subtract PI / 2 because setHatSwitch() has 0 degrees at
+					 * north.
+					 *
+					 * Also we need to invert the arguments to atan2() since
+					 * setHatSwitch() grows clockwise while radians go the other
+					 * way.
+					 */
 					float angle = atan2 (-ry, -rx) + 2 * PI - PI / 2;
-					usbStick.setHatSwitch (0, (uint16_t) toDegrees (angle));
+					uint16_t intAngle = ((uint16_t) (toDegrees (angle) + 0.5)) % 360;
+					usbStick.setHatSwitch (0, intAngle);
 				}
 			}
 		}

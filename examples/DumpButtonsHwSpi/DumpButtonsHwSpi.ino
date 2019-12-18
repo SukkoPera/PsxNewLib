@@ -1,16 +1,10 @@
 #include <DigitalIO.h>
-//~ #include <PsxControllerHwSpi.h>
-#include <PsxControllerBitBang.h>
+#include <PsxControllerHwSpi.h>
 
 #include <avr/pgmspace.h>
 typedef const __FlashStringHelper * FlashStr;
 typedef const byte* PGM_BYTES_P;
 #define PSTR_TO_F(s) reinterpret_cast<const __FlashStringHelper *> (s)
-
-const byte PIN_PS2_ATT = 10;
-const byte PIN_PS2_CMD = 11;
-const byte PIN_PS2_DAT = 12;
-const byte PIN_PS2_CLK = 13;
 
 const byte PIN_BUTTONPRESS = A0;
 const byte PIN_HAVECONTROLLER = A1;
@@ -135,8 +129,7 @@ const char* const controllerTypeStrings[PSCTRL_MAX + 1] PROGMEM = {
 
 
 
-//~ PsxControllerHwSpi psx;
-PsxControllerBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psx;
+PsxControllerHwSpi psx;
 
 boolean haveController = false;
  
@@ -210,10 +203,6 @@ void loop () {
 				srx = rx;
 				sry = ry;
 			}
-
-			byte x = psx.getAnalogButton (PSB_BLUE);
-			if (x)
-				Serial.println (x);
 		}
 	}
 

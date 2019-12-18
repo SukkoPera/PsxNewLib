@@ -69,7 +69,7 @@ const unsigned long COMMAND_RETRY_INTERVAL = 10;
 const unsigned long MODE_SWITCH_DELAY = 500;
 
 
-/** \brief Type that is used to represent a single button
+/** \brief Type that is used to represent a single button in most places
  */
 enum PsxButton {
 	PSB_NONE       = 0x0000,
@@ -93,6 +93,26 @@ enum PsxButton {
 	PSB_CIRCLE     = 0x2000,
 	PSB_CROSS      = 0x4000,
 	PSB_SQUARE     = 0x8000
+};
+
+/** \brief Type that is used to represent a single button when retrieving
+ *         analog pressure data
+ *
+ * \sa getAnalogButton()
+ */
+enum PsxAnalogButton {
+	PSAB_PAD_RIGHT  = 0,
+	PSAB_PAD_LEFT   = 1,
+	PSAB_PAD_UP     = 2,
+	PSAB_PAD_DOWN   = 3,
+	PSAB_TRIANGLE   = 4,
+	PSAB_CIRCLE     = 5,
+	PSAB_CROSS      = 6,
+	PSAB_SQUARE     = 7,
+	PSAB_L1         = 8,
+	PSAB_R1         = 9,
+	PSAB_L2         = 10,
+	PSAB_R2         = 11
 };
 
 /** \brief Type that is used to report button presses
@@ -722,14 +742,14 @@ public:
 	 * \return the pressure depth/strength [0-255, Fully released to fully
 	 *         pressed]
 	 */
-	byte getAnalogButton (const PsxButton button) const {
+	byte getAnalogButton (const PsxAnalogButton button) const {
 		byte ret = 0;
 		
 		if (analogButtonDataValid) {
-			ret = analogButtonData[7];
-		} else if (buttonPressed (button)) {
-			// No analog data, assume fully pressed or fully released
-			ret = 0xFF;
+			ret = analogButtonData[button];
+		//~ } else if (buttonPressed (button)) {		// FIXME
+			//~ // No analog data, assume fully pressed or fully released
+			//~ ret = 0xFF;
 		}
 
 		return ret;
