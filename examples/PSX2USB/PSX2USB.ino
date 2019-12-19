@@ -38,6 +38,9 @@ const byte PIN_PS2_CMD = 10;
 const byte PIN_PS2_DAT = 11;
 const byte PIN_PS2_CLK = 12;
 
+// Send debug messages to serial port
+//~ #define ENABLE_SERIAL_DEBUG
+
 PsxControllerBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psx;
 
 Joystick_ usbStick (
@@ -55,13 +58,26 @@ Joystick_ usbStick (
 	false,		// includeThrottle
 	false,		// includeAccelerator
 	false,		// includeBrake
-	false		// includeBrake
+	false		// includeSteering
 );
+
+
+#ifdef ENABLE_SERIAL_DEBUG
+	#define dstart(spd) do {Serial.begin (spd); while (!Serial) {digitalWrite (LED_BUILTIN, (millis () / 500) % 2);}} while (0);
+	#define debug(...) Serial.print (__VA_ARGS__)
+	#define debugln(...) Serial.println (__VA_ARGS__)
+#else
+	#define dstart(...)
+	#define debug(...)
+	#define debugln(...)
+#endif
 
 boolean haveController = false;
 
 
 #define	toDegrees(rad) (rad * 180.0 / PI)
+
+#define deadify(var, thres) (abs (var) > thres ? (var) : 0)
 
 /** \brief Analog sticks idle value
  * 
@@ -84,34 +100,31 @@ void setup () {
 	pinMode (LED_BUILTIN, OUTPUT);
 
 	// Init Joystick library
-	usbStick.begin ();
+	usbStick.begin (false);		// We'll call sendState() manually to minimize lag
 	usbStick.setXAxisRange (0, 255);
 	usbStick.setYAxisRange (0, 255);
 	usbStick.setRxAxisRange (0, 255);
 	usbStick.setRyAxisRange (0, 255);
 
-	Serial.begin (115200);
-	while (!Serial) {
-		digitalWrite (LED_BUILTIN, (millis () / 500) % 2);
-	}
+	dstart (115200);
 
-	Serial.println (F("Ready!"));
+	debugln (F("Ready!"));
 }
 
 void loop () {
 	if (!haveController) {
 		if (psx.begin ()) {
-			Serial.println (F("Controller found!"));
+			debugln (F("Controller found!"));
 			if (!psx.enterConfigMode ()) {
-				Serial.println (F("Cannot enter config mode"));
+				debugln (F("Cannot enter config mode"));
 			} else {
 				// Try to enable analog sticks
 				if (!psx.enableAnalogSticks ()) {
-					Serial.println (F("Cannot enable analog sticks"));
+					debugln (F("Cannot enable analog sticks"));
 				}
 								
 				if (!psx.exitConfigMode ()) {
-					Serial.println (F("Cannot exit config mode"));
+					debugln (F("Cannot exit config mode"));
 				}
 			}
 			
@@ -119,13 +132,15 @@ void loop () {
 		}
 	} else {
 		if (!psx.read ()) {
-			Serial.println (F("Controller lost :("));
+			debugln (F("Controller lost :("));
 			haveController = false;
 		} else {
 			byte x, y;
 			
-			// Flash led with buttons, I like this
-			digitalWrite (LED_BUILTIN, !!psx.getButtonWord ());
+			/* Flash led with buttons, I like this but it introduces a bit of
+			 * lag, so let's keep it disabled by default
+			 */
+			//~ digitalWrite (LED_BUILTIN, !!psx.getButtonWord ());
 
 			// Read was successful, so let's make up data for Joystick
 
@@ -166,26 +181,13 @@ void loop () {
 				usbStick.setRyAxis (y);
 			}
 
-
 			// Right analog is the hat switch
 			if (psx.getRightAnalog (x, y)){
-				int8_t rx = 0, ry = 0;
+				int8_t rx = x - ANALOG_IDLE_VALUE;	// [-128 ... +127]
+				rx = deadify (rx, ANALOG_DEAD_ZONE);
 				
-				int8_t deltaRX = x - ANALOG_IDLE_VALUE;	// [-128 ... 127]
-				uint8_t deltaRXabs = abs (deltaRX);
-				if (deltaRXabs > ANALOG_DEAD_ZONE) {
-					rx = deltaRX;
-					if (rx == -128)
-						rx = -127;
-				}
-				
-				int8_t deltaRY = y - ANALOG_IDLE_VALUE;
-				uint8_t deltaRYabs = abs (deltaRY);
-				if (deltaRYabs > ANALOG_DEAD_ZONE) {
-					ry = deltaRY;
-					if (ry == -128)
-						ry = -127;
-				}
+				int8_t ry = y - ANALOG_IDLE_VALUE;
+				ry = deadify (ry, ANALOG_DEAD_ZONE);
 
 				if (rx == 0 && ry == 0) {
 					usbStick.setHatSwitch (0, JOYSTICK_HATSWITCH_RELEASE);
@@ -204,8 +206,11 @@ void loop () {
 					usbStick.setHatSwitch (0, intAngle);
 				}
 			}
+
+			// All done, send data for real!
+			usbStick.sendState ();
 		}
 	}
 	
-	delay (1000 / 60);
+	delay (1000U / 60U);
 }
