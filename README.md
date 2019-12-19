@@ -7,12 +7,12 @@ When I started developing my [PlayStation to Commodore adapter](https://github.c
 - It just didn't work with some controllers, due to timing issues.
 - It looks more like a quick hack at the code level, rather than a well-thought-out and polished library.
 
-In order to take of all these issues, I started working on a new library, and so PsxNewLib was born.
+In order to take of these issues, I started working on a new library, and so PsxNewLib was born.
 
 ## Features
 Currently, PsxNewLib provides access to the status of all the digital buttons, analog sticks (on DualShock and later controllers) and analog buttons (on DualShock 2 and later controllers). It also provides functions to enable and disable the analog sticks and buttons.
 
-It does NOT allow driving the vibration motors available on Dual Shock and later controllers. I'm not interested in this feature, but if you are, please open an Issue saying so. If many people ask, I will look into it.
+It does NOT allow driving the vibration motors available on DualShock and later controllers. I'm not interested in this feature, but if you are, please open an Issue saying so. If many people ask, I will look into it.
 
 ## Using the Library
 First of all you must decide whether you want to use the hardware SPI pins or not. According to this, you either have to instantiate a **PsxControllerHwSpi** or **PsxControllerBitBang** object. Then you can just refer to the [example sketches](https://github.com/SukkoPera/PsxNewLib/tree/master/examples/) to learn how to use this library, as the interface should be quite straightforward.
@@ -28,12 +28,12 @@ Follow the pinout in the following picture from the [amazing CuriousInventor PS2
 
 Lynxmotion sells [a nice breakout connector](https://www.robotshop.com/en/ps2-connector-breakout-board.html) which makes things somewhat easier.
 
-I recommend using 3.3V power and signal levels. While everything will appear to work fine at 5V, PlayStation controllers are made to work at 3.3V, and they will break sooner or later, if you exceed the voltage they are designed.
+I recommend using 3.3V power and signal levels. While everything will appear to work fine at 5V, PlayStation controllers are not made to work at that voltage and they will break sooner or later.
 
 ## Compatibility List
 PsxNewLib aims to be compatible with all devices. I expect this to be the case with all the official controllers produced by Sony. Third-party devices should also work anyway. If you find one that doesn't work, please open an issue and I'll do my best to add support for it.
 
-The following table contains my testing results, all done at 3.3V voltage level through my OpenPSX2AmigaPadAdapter:
+The following table contains the results of my tests, all done at 3.3V voltage level through my OpenPSX2AmigaPadAdapter:
 
 |Manufacturer|Model                                          |Supported              |Notes                                                                                                                                  |
 |------------|-----------------------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------|
