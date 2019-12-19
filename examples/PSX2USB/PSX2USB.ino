@@ -182,11 +182,12 @@ void loop () {
 			}
 
 			// Right analog is the hat switch
-			if (psx.getRightAnalog (x, y)){
-				int8_t rx = x - ANALOG_IDLE_VALUE;	// [-128 ... +127]
+			if (psx.getRightAnalog (x, y)) {		// [0 ... 255]
+				// We flip coordinates to avoid having to invert them in atan2()
+				int8_t rx = ANALOG_IDLE_VALUE - x - 1;	// [127 ... -128]
 				rx = deadify (rx, ANALOG_DEAD_ZONE);
-				
-				int8_t ry = y - ANALOG_IDLE_VALUE;
+
+				int8_t ry = ANALOG_IDLE_VALUE - y - 1;
 				ry = deadify (ry, ANALOG_DEAD_ZONE);
 
 				if (rx == 0 && ry == 0) {
@@ -197,11 +198,12 @@ void loop () {
 					 * subtract PI / 2 because setHatSwitch() has 0 degrees at
 					 * north.
 					 *
-					 * Also we need to invert the arguments to atan2() since
-					 * setHatSwitch() grows clockwise while radians go the other
-					 * way.
+					 * Also we would need to invert the arguments to atan2()
+					 * since setHatSwitch() grows clockwise while radians go the
+					 * other way, but we have already done that when we
+					 * calculated rx and ry. Smart, huh?
 					 */
-					float angle = atan2 (-ry, -rx) + 2 * PI - PI / 2;
+					float angle = atan2 (ry, rx) + 2 * PI - PI / 2;
 					uint16_t intAngle = ((uint16_t) (toDegrees (angle) + 0.5)) % 360;
 					usbStick.setHatSwitch (0, intAngle);
 				}
