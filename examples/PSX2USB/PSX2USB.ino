@@ -38,6 +38,8 @@ const byte PIN_PS2_CMD = 10;
 const byte PIN_PS2_DAT = 11;
 const byte PIN_PS2_CLK = 12;
 
+const unsigned long POLLING_INTERVAL = 1000U / 50U;
+
 // Send debug messages to serial port
 //~ #define ENABLE_SERIAL_DEBUG
 
@@ -112,107 +114,111 @@ void setup () {
 }
 
 void loop () {
-	if (!haveController) {
-		if (psx.begin ()) {
-			debugln (F("Controller found!"));
-			if (!psx.enterConfigMode ()) {
-				debugln (F("Cannot enter config mode"));
-			} else {
-				// Try to enable analog sticks
-				if (!psx.enableAnalogSticks ()) {
-					debugln (F("Cannot enable analog sticks"));
-				}
-								
-				if (!psx.exitConfigMode ()) {
-					debugln (F("Cannot exit config mode"));
-				}
-			}
-			
-			haveController = true;
-		}
-	} else {
-		if (!psx.read ()) {
-			debugln (F("Controller lost :("));
-			haveController = false;
-		} else {
-			byte x, y;
-			
-			/* Flash led with buttons, I like this but it introduces a bit of
-			 * lag, so let's keep it disabled by default
-			 */
-			//~ digitalWrite (LED_BUILTIN, !!psx.getButtonWord ());
-
-			// Read was successful, so let's make up data for Joystick
-
-			// Buttons first!
-			usbStick.setButton (0, psx.buttonPressed (PSB_SQUARE));
-			usbStick.setButton (1, psx.buttonPressed (PSB_CROSS));
-			usbStick.setButton (2, psx.buttonPressed (PSB_CIRCLE));
-			usbStick.setButton (3, psx.buttonPressed (PSB_TRIANGLE));
-			usbStick.setButton (4, psx.buttonPressed (PSB_L1));
-			usbStick.setButton (5, psx.buttonPressed (PSB_R1));
-			usbStick.setButton (6, psx.buttonPressed (PSB_L2));
-			usbStick.setButton (7, psx.buttonPressed (PSB_R2));
-			usbStick.setButton (8, psx.buttonPressed (PSB_SELECT));
-			usbStick.setButton (9, psx.buttonPressed (PSB_START));
-			usbStick.setButton (10, psx.buttonPressed (PSB_L3));		// Only available on DualShock and later controllers
-			usbStick.setButton (11, psx.buttonPressed (PSB_R3));		// Ditto
-
-			// D-Pad makes up the X/Y axes
-			if (psx.buttonPressed (PSB_PAD_UP)) {
-				usbStick.setYAxis (0);
-			} else if (psx.buttonPressed (PSB_PAD_DOWN)) {
-				usbStick.setYAxis (255);
-			} else {
-				usbStick.setYAxis (128);
-			}
-			
-			if (psx.buttonPressed (PSB_PAD_LEFT)) {
-				usbStick.setXAxis (0);
-			} else if (psx.buttonPressed (PSB_PAD_RIGHT)) {
-				usbStick.setXAxis (255);
-			} else {
-				usbStick.setXAxis (128);
-			}
-
-			// Left analog gets mapped to the X/Y rotation axes
-			if (psx.getLeftAnalog (x, y)) {
-				usbStick.setRxAxis (x);
-				usbStick.setRyAxis (y);
-			}
-
-			// Right analog is the hat switch
-			if (psx.getRightAnalog (x, y)) {		// [0 ... 255]
-				// We flip coordinates to avoid having to invert them in atan2()
-				int8_t rx = ANALOG_IDLE_VALUE - x - 1;	// [127 ... -128]
-				rx = deadify (rx, ANALOG_DEAD_ZONE);
-
-				int8_t ry = ANALOG_IDLE_VALUE - y - 1;
-				ry = deadify (ry, ANALOG_DEAD_ZONE);
-
-				if (rx == 0 && ry == 0) {
-					usbStick.setHatSwitch (0, JOYSTICK_HATSWITCH_RELEASE);
+	static unsigned long last = 0;
+	
+	if (millis () - last >= POLLING_INTERVAL) {
+		last = millis ();
+		
+		if (!haveController) {
+			if (psx.begin ()) {
+				debugln (F("Controller found!"));
+				if (!psx.enterConfigMode ()) {
+					debugln (F("Cannot enter config mode"));
 				} else {
-					/* atan2() will yield something between -PI and +PI, so we
-					 * add 2*PI first to make it always positive, and then we
-					 * subtract PI / 2 because setHatSwitch() has 0 degrees at
-					 * north.
-					 *
-					 * Also we would need to invert the arguments to atan2()
-					 * since setHatSwitch() grows clockwise while radians go the
-					 * other way, but we have already done that when we
-					 * calculated rx and ry. Smart, huh?
-					 */
-					float angle = atan2 (ry, rx) + 2 * PI - PI / 2;
-					uint16_t intAngle = ((uint16_t) (toDegrees (angle) + 0.5)) % 360;
-					usbStick.setHatSwitch (0, intAngle);
+					// Try to enable analog sticks
+					if (!psx.enableAnalogSticks ()) {
+						debugln (F("Cannot enable analog sticks"));
+					}
+									
+					if (!psx.exitConfigMode ()) {
+						debugln (F("Cannot exit config mode"));
+					}
 				}
+				
+				haveController = true;
 			}
+		} else {
+			if (!psx.read ()) {
+				debugln (F("Controller lost :("));
+				haveController = false;
+			} else {
+				byte x, y;
+				
+				/* Flash led with buttons, I like this but it introduces a bit of
+				 * lag, so let's keep it disabled by default
+				 */
+				//~ digitalWrite (LED_BUILTIN, !!psx.getButtonWord ());
 
-			// All done, send data for real!
-			usbStick.sendState ();
+				// Read was successful, so let's make up data for Joystick
+
+				// Buttons first!
+				usbStick.setButton (0, psx.buttonPressed (PSB_SQUARE));
+				usbStick.setButton (1, psx.buttonPressed (PSB_CROSS));
+				usbStick.setButton (2, psx.buttonPressed (PSB_CIRCLE));
+				usbStick.setButton (3, psx.buttonPressed (PSB_TRIANGLE));
+				usbStick.setButton (4, psx.buttonPressed (PSB_L1));
+				usbStick.setButton (5, psx.buttonPressed (PSB_R1));
+				usbStick.setButton (6, psx.buttonPressed (PSB_L2));
+				usbStick.setButton (7, psx.buttonPressed (PSB_R2));
+				usbStick.setButton (8, psx.buttonPressed (PSB_SELECT));
+				usbStick.setButton (9, psx.buttonPressed (PSB_START));
+				usbStick.setButton (10, psx.buttonPressed (PSB_L3));		// Only available on DualShock and later controllers
+				usbStick.setButton (11, psx.buttonPressed (PSB_R3));		// Ditto
+
+				// D-Pad makes up the X/Y axes
+				if (psx.buttonPressed (PSB_PAD_UP)) {
+					usbStick.setYAxis (0);
+				} else if (psx.buttonPressed (PSB_PAD_DOWN)) {
+					usbStick.setYAxis (255);
+				} else {
+					usbStick.setYAxis (128);
+				}
+				
+				if (psx.buttonPressed (PSB_PAD_LEFT)) {
+					usbStick.setXAxis (0);
+				} else if (psx.buttonPressed (PSB_PAD_RIGHT)) {
+					usbStick.setXAxis (255);
+				} else {
+					usbStick.setXAxis (128);
+				}
+
+				// Left analog gets mapped to the X/Y rotation axes
+				if (psx.getLeftAnalog (x, y)) {
+					usbStick.setRxAxis (x);
+					usbStick.setRyAxis (y);
+				}
+
+				// Right analog is the hat switch
+				if (psx.getRightAnalog (x, y)) {		// [0 ... 255]
+					// We flip coordinates to avoid having to invert them in atan2()
+					int8_t rx = ANALOG_IDLE_VALUE - x - 1;	// [127 ... -128]
+					rx = deadify (rx, ANALOG_DEAD_ZONE);
+
+					int8_t ry = ANALOG_IDLE_VALUE - y - 1;
+					ry = deadify (ry, ANALOG_DEAD_ZONE);
+
+					if (rx == 0 && ry == 0) {
+						usbStick.setHatSwitch (0, JOYSTICK_HATSWITCH_RELEASE);
+					} else {
+						/* atan2() will yield something between -PI and +PI, so we
+						 * add 2*PI first to make it always positive, and then we
+						 * subtract PI / 2 because setHatSwitch() has 0 degrees at
+						 * north.
+						 *
+						 * Also we would need to invert the arguments to atan2()
+						 * since setHatSwitch() grows clockwise while radians go the
+						 * other way, but we have already done that when we
+						 * calculated rx and ry. Smart, huh?
+						 */
+						float angle = atan2 (ry, rx) + 2 * PI - PI / 2;
+						uint16_t intAngle = ((uint16_t) (toDegrees (angle) + 0.5)) % 360;
+						usbStick.setHatSwitch (0, intAngle);
+					}
+				}
+
+				// All done, send data for real!
+				usbStick.sendState ();
+			}
 		}
 	}
-	
-	delay (1000U / 60U);
 }
