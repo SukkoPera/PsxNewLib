@@ -158,10 +158,10 @@ enum PsxControllerType {
 	PSCTRL_UNKNOWN = 0,
 	PSCTRL_DUALSHOCK,
 	PSCTRL_DSWIRELESS,
-	PSCTRL_GUITHERO,
-
-	PSCTRL_MAX
+	PSCTRL_GUITHERO
 };
+
+const byte PSCTRL_MAX = static_cast<byte> (PSCTRL_GUITHERO) + 1;
 
 /** \brief PSX Controller Interface
  * 
