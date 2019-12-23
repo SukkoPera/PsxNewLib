@@ -10,7 +10,7 @@ When I started developing my [PlayStation to Commodore adapter](https://github.c
 In order to take of these issues, I started working on a new library, and so PsxNewLib was born.
 
 ## Features
-Currently, PsxNewLib provides access to the status of all the digital buttons, analog sticks (on DualShock and later controllers) and analog buttons (on DualShock 2 and later controllers). It also provides functions to enable and disable the analog sticks and buttons.
+Currently, PsxNewLib provides access to the status of all digital buttons, analog sticks (on DualShock and later controllers) and analog buttons (on DualShock 2 and later controllers). It also provides functions to enable and disable the analog sticks and buttons.
 
 It does NOT allow driving the vibration motors available on DualShock and later controllers. I'm not interested in this feature, but if you are, please open an Issue saying so. If many people ask, I will look into it.
 
@@ -39,7 +39,7 @@ The following table contains the results of my tests, all done at 3.3V voltage l
 |------------|-----------------------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------|
 |Sony        |PlayStation Controller (SCPH-1010)             |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
 |Sony        |Revised PlayStation Controller (SCPH-1080)     |![Yes](img/yes.png)    |                                                                                                                                       |
-|Sony        |Analog Joystick (SCPH-1110)                    |![Yes](img/yes.png)    |Informally known as the *Flighstick*                                                                                                   |
+|Sony        |Analog Joystick (SCPH-1110)                    |![Yes](img/yes.png)    |Informally known as the *Flightstick*                                                                                                   |
 |Sony        |Dual Analog Controller (Japan, SCPH-1150)      |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
 |Sony        |Dual Analog Controller (USA, SCPH-1180)        |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
 |Sony        |Dual Analog Controller (Europe, SCPH-1180e)    |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
