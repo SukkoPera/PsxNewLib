@@ -39,7 +39,7 @@ The following table contains the results of my tests, all done at 3.3V voltage l
 |------------|-----------------------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------|
 |Sony        |PlayStation Controller (SCPH-1010)             |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
 |Sony        |Revised PlayStation Controller (SCPH-1080)     |![Yes](img/yes.png)    |                                                                                                                                       |
-|Sony        |Analog Joystick (SCPH-1110)                    |![Yes](img/yes.png)    |Informally known as the *Flightstick*                                                                                                   |
+|Sony        |Analog Joystick (SCPH-1110)                    |![Yes](img/yes.png)    |Informally known as the *Flightstick*                                                                                                  |
 |Sony        |Dual Analog Controller (Japan, SCPH-1150)      |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
 |Sony        |Dual Analog Controller (USA, SCPH-1180)        |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
 |Sony        |Dual Analog Controller (Europe, SCPH-1180e)    |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
@@ -48,7 +48,7 @@ The following table contains the results of my tests, all done at 3.3V voltage l
 |Sony        |DualShock Controller for PSOne (SCPH-110)      |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
 |Asciiware   |Arcade Stick (SCEH-0002)                       |![Yes](img/yes.png)    |                                                                                                                                       |
 |Namco       |Arcade Stick (NPC-102 (SLEH-0004))             |![Yes](img/yes.png)    |                                                                                                                                       |
-|Logitech    |Cordless Action                                |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
+|Logitech    |Cordless Action (G-X2D11)                      |![Yes](img/yes.png)    |                                                                                                                                       |
 |Namco       |Negcon (NPC-101)                               |![No](img/no.png)      |Looking for one                                                                                                                        |
 |EastVita    |Wireless Controller                            |![Yes](img/yes.png)    |Chinese knock-off, cheap but with surprising quality, pretty similar to the Lynxmotion controller, probably goes under other names, too|
 
