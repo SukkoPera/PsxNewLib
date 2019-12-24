@@ -187,6 +187,12 @@ protected:
 	 */
 	byte inputBuffer[BUFFER_SIZE];
 
+	/** \brief Previous (Digital) Button status
+	 * 
+	 * The individual bits can be identified through #PsxButton.
+	 */
+	PsxButtons previousButtonWord;
+
 	/** \brief (Digital) Button status
 	 * 
 	 * The individual bits can be identified through #PsxButton.
@@ -651,6 +657,7 @@ public:
 				exitConfigMode ();
 			} else {
 				// We surely have buttons
+				previousButtonWord = buttonWord;
 				buttonWord = ((PsxButtons) in[4] << 8) | in[3];
 
 				if (isDualShockReply (in) || isFlightstickReply (in)) {
@@ -677,14 +684,22 @@ public:
 		return ret;
 	}
 
-	/** \brief Check if a button is pressed in a Button Word
+	/** \brief Check if any button has changed state
 	 * 
-	 * \param[in] buttons The button word to check in
-	 * \param[in] button The button to be checked
-	 * \return true if \a button is pressed in \a buttons, false otherwise
+	 * \return true if any button has changed state with regard to the previous
+	 *         call to read(), false otherwise
 	 */
-	boolean buttonPressed (const PsxButtons buttons, const PsxButton button) const {
-		return ((buttons & static_cast<const PsxButtons> (button)) > 0);
+	boolean buttonsChanged () const {
+		return ((previousButtonWord ^ buttonWord) > 0);
+	}
+
+	/** \brief Check if a button has changed state
+	 * 
+	 * \return true if \a button has changed state with regard to the previous
+	 *         call to read(), false otherwise
+	 */
+	boolean buttonChanged (const PsxButtons button) const {
+		return (((previousButtonWord ^ buttonWord) & button) > 0);
 	}
 
 	/** \brief Check if a button is currently pressed
@@ -695,6 +710,36 @@ public:
 	 */
 	boolean buttonPressed (const PsxButton button) const {
 		return buttonPressed (~buttonWord, button);
+	}
+
+	/** \brief Check if a button is pressed in a Button Word
+	 * 
+	 * \param[in] buttons The button word to check in
+	 * \param[in] button The button to be checked
+	 * \return true if \a button is pressed in \a buttons, false otherwise
+	 */
+	boolean buttonPressed (const PsxButtons buttons, const PsxButton button) const {
+		return ((buttons & static_cast<const PsxButtons> (button)) > 0);
+	}
+
+	/** \brief Check if a button has just been pressed
+	 * 
+	 * \param[in] button The button to be checked
+	 * \return true if \a button was not pressed in the previous call to read()
+	 *         and is now, false otherwise
+	 */
+	boolean buttonJustPressed (const PsxButton button) const {
+		return (buttonChanged (button) & buttonPressed (button));
+	}
+
+	/** \brief Check if a button has just been released
+	 * 
+	 * \param[in] button The button to be checked
+	 * \return true if \a button was pressed in the previous call to read() and
+	 *         is not now, false otherwise
+	 */
+	boolean buttonJustReleased (const PsxButton button) const {
+		return (buttonChanged (button) & ((~previousButtonWord & button) > 0));
 	}
 
 	/** \brief Check if NO button is pressed in a Button Word
