@@ -113,7 +113,10 @@ enum PsxAnalogButton {
 
 /** \brief Number of digital buttons
  *
- * This is basically the number of entries in #PsxButton.
+ * Includes \a everything, i.e.: 4 directions, Square, Cross, Circle, Triangle,
+ * L1/2/3, R1/2/3, Select and Start.
+ *
+ * This is the number of entries in #PsxButton.
  */
 const byte PSX_BUTTONS_NO = 16;
 
