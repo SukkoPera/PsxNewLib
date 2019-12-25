@@ -43,8 +43,6 @@ const byte PIN_PS2_CLK = 13;
 const byte PIN_BUTTONPRESS = A0;
 const byte PIN_HAVECONTROLLER = A1;
 
-const byte PSX_BUTTONS_NO = 16;
-
 const char buttonSelectName[] PROGMEM = "Select";
 const char buttonL3Name[] PROGMEM = "L3";
 const char buttonR3Name[] PROGMEM = "R3";

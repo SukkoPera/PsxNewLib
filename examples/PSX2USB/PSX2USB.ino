@@ -81,11 +81,6 @@ boolean haveController = false;
 
 #define deadify(var, thres) (abs (var) > thres ? (var) : 0)
 
-/** \brief Analog sticks idle value
- * 
- * Value reported when the analog stick is in the (ideal) center position.
- */
-const byte ANALOG_IDLE_VALUE = 128U;
 
 /** \brief Dead zone for analog sticks
  *  
@@ -103,10 +98,12 @@ void setup () {
 
 	// Init Joystick library
 	usbStick.begin (false);		// We'll call sendState() manually to minimize lag
-	usbStick.setXAxisRange (0, 255);
-	usbStick.setYAxisRange (0, 255);
-	usbStick.setRxAxisRange (0, 255);
-	usbStick.setRyAxisRange (0, 255);
+
+	// This way we can output the same range of values we get from the PSX controller
+	usbStick.setXAxisRange (ANALOG_MIN_VALUE, ANALOG_MAX_VALUE);
+	usbStick.setYAxisRange (ANALOG_MIN_VALUE, ANALOG_MAX_VALUE);
+	usbStick.setRxAxisRange (ANALOG_MIN_VALUE, ANALOG_MAX_VALUE);
+	usbStick.setRyAxisRange (ANALOG_MIN_VALUE, ANALOG_MAX_VALUE);
 
 	dstart (115200);
 
@@ -167,19 +164,19 @@ void loop () {
 
 				// D-Pad makes up the X/Y axes
 				if (psx.buttonPressed (PSB_PAD_UP)) {
-					usbStick.setYAxis (0);
+					usbStick.setYAxis (ANALOG_MIN_VALUE);
 				} else if (psx.buttonPressed (PSB_PAD_DOWN)) {
-					usbStick.setYAxis (255);
+					usbStick.setYAxis (ANALOG_MAX_VALUE);
 				} else {
-					usbStick.setYAxis (128);
+					usbStick.setYAxis (ANALOG_IDLE_VALUE);
 				}
 				
 				if (psx.buttonPressed (PSB_PAD_LEFT)) {
-					usbStick.setXAxis (0);
+					usbStick.setXAxis (ANALOG_MIN_VALUE);
 				} else if (psx.buttonPressed (PSB_PAD_RIGHT)) {
-					usbStick.setXAxis (255);
+					usbStick.setXAxis (ANALOG_MAX_VALUE);
 				} else {
-					usbStick.setXAxis (128);
+					usbStick.setXAxis (ANALOG_IDLE_VALUE);
 				}
 
 				// Left analog gets mapped to the X/Y rotation axes

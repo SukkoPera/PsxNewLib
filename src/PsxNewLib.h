@@ -85,10 +85,6 @@ enum PsxButton {
 	PSB_R2         = 0x0200,
 	PSB_L1         = 0x0400,
 	PSB_R1         = 0x0800,
-	PSB_GREEN      = 0x1000,
-	PSB_RED        = 0x2000,
-	PSB_BLUE       = 0x4000,
-	PSB_PINK       = 0x8000,
 	PSB_TRIANGLE   = 0x1000,
 	PSB_CIRCLE     = 0x2000,
 	PSB_CROSS      = 0x4000,
@@ -114,6 +110,12 @@ enum PsxAnalogButton {
 	PSAB_L2         = 10,
 	PSAB_R2         = 11
 };
+
+/** \brief Number of digital buttons
+ *
+ * This is basically the number of entries in #PsxButton.
+ */
+const byte PSX_BUTTONS_NO = 16;
 
 /** \brief Type that is used to report button presses
  */
@@ -161,7 +163,46 @@ enum PsxControllerType {
 	PSCTRL_GUITHERO
 };
 
+/** \brief Number of different controller types recognized
+ *
+ * This is the number of entries in #PsxControllerType.
+ */
 const byte PSCTRL_MAX = static_cast<byte> (PSCTRL_GUITHERO) + 1;
+
+/** \brief Analog sticks minimum value
+ * 
+ * Minimum value reported by analog sticks. This usually means that the stick is
+ * fully either at the top or left position. Note that some sticks might not get
+ * fully down to this value.
+ *
+ * \sa ANALOG_MAX_VALUE
+ * \sa ANALOG_IDLE_VALUE
+ */
+const byte ANALOG_MIN_VALUE = 0U;
+
+/** \brief Analog sticks maximum value
+ * 
+ * Maximum value reported by analog sticks. This usually means that the stick is
+ * fully either at the bottom or right position. Note that some sticks might not
+ * get fully up to this value.
+ *
+ * \sa ANALOGI_MAX_VALUE
+ * \sa ANALOG_IDLE_VALUE
+ */
+const byte ANALOG_MAX_VALUE = 255U;
+
+/** \brief Analog sticks idle value
+ * 
+ * Value reported when an analog stick is in the (ideal) center position. Note
+ * that old and worn-out sticks might not self-center perfectly when released,
+ * so you should never rely on this precise value to be reported.
+ *
+ * Also note that the up/down and left/right ranges are off by one, since values
+ * 0-127 represent up/left and 129-255 mean down/right. The former interval
+ * contains 128 different values, while the latter only 127. Sometimes you will
+ * need to take this in consideration.
+ */
+const byte ANALOG_IDLE_VALUE = 128U;
 
 /** \brief PSX Controller Interface
  * 
