@@ -5,7 +5,7 @@ When I started developing my [PlayStation to Commodore adapter](https://github.c
 - It does not support non-DualShock controllers, which basically rules out all the excellent arcade sticks made for the PlayStation.
 - It only supports bit-banging the protocol. This means that it can work on any pins, but since the protocol is essentially SPI, we could let the hardware take care of it, making communication more reliable.
 - It just didn't work with some controllers, due to timing issues.
-- It looks more like a quick hack at the code level, rather than a well-thought-out and polished library.
+- It looks more like a quick hack at the code level, rather than a polished and maintainable library.
 
 In order to take of these issues, I started working on a new library, and so PsxNewLib was born.
 
@@ -16,6 +16,8 @@ It does NOT allow driving the vibration motors available on DualShock and later 
 
 ## Using the Library
 First of all you must decide whether you want to use the hardware SPI pins or not. According to this, you either have to instantiate a **PsxControllerHwSpi** or **PsxControllerBitBang** object. Then you can just refer to the [example sketches](https://github.com/SukkoPera/PsxNewLib/tree/master/examples/) to learn how to use this library, as the interface should be quite straightforward.
+
+The API has a few rough edges and is not guaranteed to be stable, but any changes will be to make it easier to use.
 
 Among the examples, there is one which will turn any PlayStation controller into a USB one simply by using an Arduino Leonardo or Micro. It is an excellent way to make a cheap adapter and to test the controller and library.
 
