@@ -1,3 +1,31 @@
+/*******************************************************************************
+ * This file is part of PsxNewLib.                                             *
+ *                                                                             *
+ * Copyright (C) 2019 by SukkoPera <software@sukkology.net>                    *
+ *                                                                             *
+ * PsxNewLib is free software: you can redistribute it and/or                  *
+ * modify it under the terms of the GNU General Public License as published by *
+ * the Free Software Foundation, either version 3 of the License, or           *
+ * (at your option) any later version.                                         *
+ *                                                                             *
+ * PsxNewLib is distributed in the hope that it will be useful,                *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of              *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               *
+ * GNU General Public License for more details.                                *
+ *                                                                             *
+ * You should have received a copy of the GNU General Public License           *
+ * along with PsxNewLib. If not, see http://www.gnu.org/licenses.              *
+ *******************************************************************************
+ *
+ * This sketch will dump to serial whatever is done on a PSX controller. It is
+ * an excellent way to test that all buttons/sticks are read correctly.
+ *
+ * It's missing support for analog buttons, that will come in the future.
+ *
+ * This example drives the controller by bitbanging the protocol, there is
+ * another similar one using the hardware SPI support.
+ */
+
 #include <DigitalIO.h>
 #include <PsxControllerBitBang.h>
 
@@ -6,6 +34,7 @@ typedef const __FlashStringHelper * FlashStr;
 typedef const byte* PGM_BYTES_P;
 #define PSTR_TO_F(s) reinterpret_cast<const __FlashStringHelper *> (s)
 
+// These can be changed freely when using the bitbanged protocol
 const byte PIN_PS2_ATT = 10;
 const byte PIN_PS2_CMD = 11;
 const byte PIN_PS2_DAT = 12;

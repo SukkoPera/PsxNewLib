@@ -1,3 +1,42 @@
+/*******************************************************************************
+ * This file is part of PsxNewLib.                                             *
+ *                                                                             *
+ * Copyright (C) 2019 by SukkoPera <software@sukkology.net>                    *
+ *                                                                             *
+ * PsxNewLib is free software: you can redistribute it and/or                  *
+ * modify it under the terms of the GNU General Public License as published by *
+ * the Free Software Foundation, either version 3 of the License, or           *
+ * (at your option) any later version.                                         *
+ *                                                                             *
+ * PsxNewLib is distributed in the hope that it will be useful,                *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of              *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               *
+ * GNU General Public License for more details.                                *
+ *                                                                             *
+ * You should have received a copy of the GNU General Public License           *
+ * along with PsxNewLib. If not, see http://www.gnu.org/licenses.              *
+ *******************************************************************************
+ *
+ * This sketch will dump to serial whatever is done on a PSX controller. It is
+ * an excellent way to test that all buttons/sticks are read correctly.
+ *
+ * It's missing support for analog buttons, that will come in the future.
+ *
+ * This example drives the controller through the hardware SPI port, so pins are
+ * fixed and it is only guaranteed to work on an Arduino Uno at the moment:
+ *
+ * ATTN: Pin 10
+ * CMD: Pin 11
+ * DATA: Pin 12
+ * CLK: Pin 13
+ *
+ * It also works perfectly on OpenPSX2AmigaPadAdapter boards (as it's basically
+ * a modified Uno).
+ *
+ * There is another similar one using a bitbanged protocol implementation that
+ * can be used on any pins/board.
+ */
+
 #include <DigitalIO.h>
 #include <PsxControllerHwSpi.h>
 
