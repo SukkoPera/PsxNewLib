@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of PsxNewLib.                                             *
  *                                                                             *
- * Copyright (C) 2019 by SukkoPera <software@sukkology.net>                    *
+ * Copyright (C) 2019-2020 by SukkoPera <software@sukkology.net>               *
  *                                                                             *
  * PsxNewLib is free software: you can redistribute it and/or                  *
  * modify it under the terms of the GNU General Public License as published by *

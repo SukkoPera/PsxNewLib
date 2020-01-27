@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of PsxNewLib.                                             *
  *                                                                             *
- * Copyright (C) 2019 by SukkoPera <software@sukkology.net>                    *
+ * Copyright (C) 2019-2020 by SukkoPera <software@sukkology.net>               *
  *                                                                             *
  * PsxNewLib is free software: you can redistribute it and/or                  *
  * modify it under the terms of the GNU General Public License as published by *
@@ -19,7 +19,7 @@
 /**
  * \file PsxNewLib.h
  * \author SukkoPera <software@sukkology.net>
- * \date 16 Dec 2019
+ * \date 27 Jan 2020
  * \brief Playstation controller interface library for Arduino
  * 
  * Please refer to the GitHub page and wiki for any information:
