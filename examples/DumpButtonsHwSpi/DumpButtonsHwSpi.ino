@@ -193,7 +193,7 @@ void loop () {
 				Serial.println (F("Cannot enter config mode"));
 			} else {
 				PsxControllerType ctype = psx.getControllerType ();
-				PGM_BYTES_P cname = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(controllerTypeStrings[ctype < PSCTRL_MAX ? ctype : PSCTRL_MAX])));
+				PGM_BYTES_P cname = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(controllerTypeStrings[ctype < PSCTRL_MAX ? static_cast<byte> (ctype) : PSCTRL_MAX])));
 				Serial.print (F("Controller Type is: "));
 				Serial.println (PSTR_TO_F (cname));
 
