@@ -5,9 +5,9 @@
 /** \brief Attention Delay
  *
  * Time between attention being issued to the controller and the first clock
- * edge.
+ * edge (us).
  */
-const byte ATTN_DELAY = 10;
+const byte ATTN_DELAY = 15;
 
 const byte PIN_UNO_SS = 10;
 const byte PIN_UNO_MOSI = 11;
