@@ -162,7 +162,7 @@ void dumpButtons (PsxButtons psxButtons) {
 	}
 }
 
-void dumpAnalog (const char *str, const byte x, const byte y) {
+void dumpAnalog (const char *str, const int8_t x, const int8_t y) {
 	Serial.print (str);
 	Serial.print (F(" analog: x = "));
 	Serial.print (x);
@@ -177,8 +177,7 @@ boolean rightAnalogMoved (int8_t& x, int8_t& y) {
 	
 	if (psx.getRightAnalog (rx, ry)) {				// [0 ... 255]
 		int8_t deltaRX = rx - ANALOG_IDLE_VALUE;	// [-128 ... 127]
-		uint8_t deltaRXabs = abs (deltaRX);
-		if (deltaRXabs > ANALOG_DEAD_ZONE) {
+		if (abs (deltaRX) > ANALOG_DEAD_ZONE) {
 			x = deltaRX;
 			if (x == -128)
 				x = -127;
@@ -188,8 +187,7 @@ boolean rightAnalogMoved (int8_t& x, int8_t& y) {
 		}
 		
 		int8_t deltaRY = ry - ANALOG_IDLE_VALUE;
-		uint8_t deltaRYabs = abs (deltaRY);
-		if (deltaRYabs > ANALOG_DEAD_ZONE) {
+		if (abs (deltaRY) > ANALOG_DEAD_ZONE) {
 			y = deltaRY;
 			if (y == -128)
 				y = -127;
@@ -275,7 +273,7 @@ void setup () {
 }
  
 void loop () {
-	static byte slx, sly, srx, sry;
+	static int8_t slx, sly, srx, sry;
 	
 	fastDigitalWrite (PIN_HAVECONTROLLER, haveController);
 	
