@@ -28,9 +28,9 @@ Follow the pinout in the following picture from the [amazing CuriousInventor PS2
 
 **You are advised not to rely on wire colors, but rather on pin positions**. The wires in the image come from an official Sony controller, I expect their colors to be fairly consistent among all Sony controllers, but you shouldn't really trust them.
 
-Lynxmotion sells [a nice breakout connector](https://www.robotshop.com/en/ps2-connector-breakout-board.html) which makes things somewhat easier.
+I recommend using 3.3V power and signal levels. While everything will appear to work fine at 5V, PlayStation controllers are not made to work at that voltage and they will break sooner or later. Many of the tutorials out there ignore this fact, but they really shouldn't. You have been warned.
 
-I recommend using 3.3V power and signal levels. While everything will appear to work fine at 5V, PlayStation controllers are not made to work at that voltage and they will break sooner or later.
+In order to make things as safe and straightforward as possible, **I have also designed [an Arduino shield](https://github.com/SukkoPera/PsxControllerShield) that will work perfectly with this library**. Please check it out and use it as your reference for all connections.
 
 ## Compatibility List
 PsxNewLib aims to be compatible with all devices. I expect this to be the case with all the official controllers produced by Sony. Third-party devices should also work anyway. If you find one that doesn't work, please open an issue and I'll do my best to add support for it.
@@ -43,8 +43,8 @@ The following table contains the results of my tests, all done at 3.3V voltage l
 |Sony        |Revised PlayStation Controller (SCPH-1080)     |![Yes](img/yes.png)    |                                                                                                                                       |
 |Sony        |Analog Joystick (SCPH-1110)                    |![Yes](img/yes.png)    |Informally known as the *Flightstick*                                                                                                  |
 |Sony        |Dual Analog Controller (Japan, SCPH-1150)      |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
-|Sony        |Dual Analog Controller (USA, SCPH-1180)        |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
-|Sony        |Dual Analog Controller (Europe, SCPH-1180e)    |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
+|Sony        |Dual Analog Controller (USA, SCPH-1180)        |![Maybe](img/maybe.png)|Not tested yet but likely to work, as *SCPH-1180e*                                                                                     |
+|Sony        |Dual Analog Controller (Europe, SCPH-1180e)    |![Yes](img/yes.png)    |Controller actually only has *SCPH-1180* on it, but I'm assuming it's the European version since it was bought in Italy                |
 |Sony        |DualShock Analog Controller (SCPH-1200)        |![Yes](img/yes.png)    |                                                                                                                                       |
 |Sony        |DualShock 2 Analog Controller (SCPH-10010)     |![Yes](img/yes.png)    |                                                                                                                                       |
 |Sony        |DualShock Controller for PSOne (SCPH-110)      |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
@@ -56,6 +56,11 @@ The following table contains the results of my tests, all done at 3.3V voltage l
 
 ## Debugging
 If you have problems, uncomment the `DUMP_COMMS` #define in [https://github.com/SukkoPera/PsxNewLib/blob/master/src/PsxNewLib.h#L33](PsxNewLib.h) and watch your serial monitor.
+
+### Releases
+If you want to use this library, you are recommended to get [the latest release](https://github.com/SukkoPera/PsxNewLib/releases) rather than the current git version, as the latter might be under development and is not guaranteed to be working.
+
+Every release is accompanied by any relevant notes about it, which you are recommended to read carefully.
 
 ## License
 PsxNewLib is released under the GNU General Public License (GPL) v3. If you make any modifications to the library, **you must** contribute them back.
