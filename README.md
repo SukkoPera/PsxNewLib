@@ -57,7 +57,7 @@ The following table contains the results of my tests, all done at 3.3V voltage l
 ## Debugging
 If you have problems, uncomment the `DUMP_COMMS` #define in [https://github.com/SukkoPera/PsxNewLib/blob/master/src/PsxNewLib.h#L33](PsxNewLib.h) and watch your serial monitor.
 
-### Releases
+## Releases
 If you want to use this library, you are recommended to get [the latest release](https://github.com/SukkoPera/PsxNewLib/releases) rather than the current git version, as the latter might be under development and is not guaranteed to be working.
 
 Every release is accompanied by any relevant notes about it, which you are recommended to read carefully.
