@@ -55,7 +55,7 @@ The following table contains the results of my tests, all done at 3.3V voltage l
 |EastVita    |Wireless Controller                            |![Yes](img/yes.png)    |Chinese knock-off, cheap but with surprising quality, pretty similar to the Lynxmotion controller, probably goes under other names, too|
 
 ## Debugging
-If you have problems, uncomment the `DUMP_COMMS` #define in [https://github.com/SukkoPera/PsxNewLib/blob/master/src/PsxNewLib.h#L33](PsxNewLib.h) and watch your serial monitor.
+If you have problems, uncomment the `DUMP_COMMS` #define in [PsxNewLib.h](https://github.com/SukkoPera/PsxNewLib/blob/master/src/PsxNewLib.h#L33) and watch your serial monitor.
 
 ## Releases
 If you want to use this library, you are recommended to get [the latest release](https://github.com/SukkoPera/PsxNewLib/releases) rather than the current git version, as the latter might be under development and is not guaranteed to be working.
