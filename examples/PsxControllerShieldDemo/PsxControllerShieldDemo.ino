@@ -42,6 +42,13 @@ typedef const __FlashStringHelper * FlashStr;
 typedef const byte* PGM_BYTES_P;
 #define PSTR_TO_F(s) reinterpret_cast<const __FlashStringHelper *> (s)
 
+/** \brief Pin used for Controller Attention (ATTN)
+ *
+ * This pin makes the controller pay attention to what we're saying. The shield
+ * has pin 10 wired for this purpose.
+ */
+const byte PIN_PS2_ATT = 10;
+
 /** \brief Pin for Controller Presence Led
  *
  * This led will light up steadily whenever a controller is detected and be off
@@ -70,7 +77,7 @@ const byte PIN_ANALOG = 6;
  */
 const byte ANALOG_DEAD_ZONE = 50U;
 
-PsxControllerHwSpi psx;
+PsxControllerHwSpi<PIN_PS2_ATT> psx;
 
 boolean haveController = false;
 

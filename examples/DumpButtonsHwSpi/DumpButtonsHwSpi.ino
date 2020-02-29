@@ -23,12 +23,16 @@
  * It's missing support for analog buttons, that will come in the future.
  *
  * This example drives the controller through the hardware SPI port, so pins are
- * fixed and it is only guaranteed to work on an Arduino Uno at the moment:
+ * fixed and depend on the board/microcontroller being used. For instance, on an
+ * Arduino Uno connections must be as follows:
  *
- * ATTN: Pin 10
  * CMD: Pin 11
  * DATA: Pin 12
  * CLK: Pin 13
+ *
+ * Any pin can be used for ATTN, but please note that most 8-bit AVRs require
+ * the HW SPI SS pin to be kept as an output for HW SPI to be in master mode, so
+ * using that pin for ATTN is a natural choice. On the Uno this would be pin 10.
  *
  * It also works perfectly on OpenPSX2AmigaPadAdapter boards (as it's basically
  * a modified Uno).
@@ -44,6 +48,9 @@
 typedef const __FlashStringHelper * FlashStr;
 typedef const byte* PGM_BYTES_P;
 #define PSTR_TO_F(s) reinterpret_cast<const __FlashStringHelper *> (s)
+
+// This can be changed freely but please see above
+const byte PIN_PS2_ATT = 10;
 
 const byte PIN_BUTTONPRESS = A0;
 const byte PIN_HAVECONTROLLER = A1;
@@ -166,7 +173,7 @@ const char* const controllerTypeStrings[PSCTRL_MAX + 1] PROGMEM = {
 
 
 
-PsxControllerHwSpi psx;
+PsxControllerHwSpi<PIN_PS2_ATT> psx;
 
 boolean haveController = false;
  

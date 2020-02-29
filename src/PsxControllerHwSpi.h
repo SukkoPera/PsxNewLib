@@ -9,20 +9,16 @@
  */
 const byte ATTN_DELAY = 15;
 
-const byte PIN_UNO_SS = 10;
-const byte PIN_UNO_MOSI = 11;
-const byte PIN_UNO_MISO = 12;
-const byte PIN_UNO_SCK = 13;
-
 // Set up the speed, data order and data mode
 static SPISettings spiSettings (250000, LSBFIRST, SPI_MODE3);
 
+template <uint8_t PIN_ATT>
 class PsxControllerHwSpi: public PsxController {
 private:
-	DigitalPin<PIN_UNO_SS> att;
-	DigitalPin<PIN_UNO_MOSI> cmd;
-	DigitalPin<PIN_UNO_MISO> dat;
-	DigitalPin<PIN_UNO_SCK> clk;
+	DigitalPin<PIN_ATT> att;
+	DigitalPin<MOSI> cmd;
+	DigitalPin<MISO> dat;
+	DigitalPin<SCK> clk;
 
 protected:
 	virtual void attention () override {
@@ -38,6 +34,7 @@ protected:
 		
 		SPI.endTransaction ();
 
+		// Make sure CMD and CLK sit high
 		cmd.high ();
 		clk.high ();
 		att.high ();
@@ -51,6 +48,11 @@ protected:
 public:
 	virtual boolean begin () override {
 		att.config (OUTPUT, HIGH);    // HIGH -> Controller not selected
+
+		/* We need to force these at startup, that's why we need to know which
+		 * pins are used for HW SPI. It's a sort of "start condition" the
+		 * controller needs.
+		 */
 		cmd.config (OUTPUT, HIGH);
 		clk.config (OUTPUT, HIGH);
 		dat.config (INPUT, HIGH);     // Enable pull-up
