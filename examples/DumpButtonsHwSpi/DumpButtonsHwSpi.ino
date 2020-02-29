@@ -143,7 +143,7 @@ void dumpButtons (PsxButtons psxButtons) {
 	}
 }
 
-void dumpAnalog (const char *str, const int8_t x, const int8_t y) {
+void dumpAnalog (const char *str, const byte x, const byte y) {
 	Serial.print (str);
 	Serial.print (F(" analog: x = "));
 	Serial.print (x);
@@ -188,7 +188,7 @@ void setup () {
 }
  
 void loop () {
-	static int8_t slx, sly, srx, sry;
+	static byte slx, sly, srx, sry;
 	
 	fastDigitalWrite (PIN_HAVECONTROLLER, haveController);
 	
