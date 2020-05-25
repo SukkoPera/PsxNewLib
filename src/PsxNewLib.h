@@ -124,6 +124,12 @@ const byte PSX_BUTTONS_NO = 16;
  */
 typedef uint16_t PsxButtons;
 
+/** \brief Size of buffer holding analog button data
+ *
+ * This is the size of the array returned by getAnalogButtonData().
+ */
+const byte PSX_ANALOG_BTN_DATA_SIZE = 12;
+
 //! \name Controller Commands
 //! @{
 /** \brief Enter Configuration Mode
@@ -264,7 +270,7 @@ protected:
 	 * 
 	 * \todo What's the meaning of every individual byte?
 	 */
-	byte analogButtonData[ANALOG_BTN_DATA_SIZE];
+	byte analogButtonData[PSX_ANALOG_BTN_DATA_SIZE];
 
 	/** \brief Analog Button Data Validity
 	 * 
@@ -849,6 +855,12 @@ public:
 		}
 
 		return ret;
+	}
+
+	/** \brief Retrieve all analog button data
+	 */
+	const byte* getAnalogButtonData () const {
+		return analogButtonDataValid ? analogButtonData : NULL;
 	}
 
 	/** \brief Retrieve position of the \a left analog stick
