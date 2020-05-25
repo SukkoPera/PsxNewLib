@@ -185,6 +185,30 @@ enum PsxControllerType {
  */
 const byte PSCTRL_MAX = static_cast<byte> (PSCTRL_GUITHERO) + 1;
 
+
+/** \brief Controller Protocol
+ *
+ * Identifies the protocol the controller uses to report axes positions and
+ * button presses. It's quite more reliable than #PsxControllerType, so use this
+ * if you must.
+ *
+ * \sa getProtocol
+ */
+enum PsxControllerProtocol {
+	PSPROTO_UNKNOWN = 0,		//!< No idea
+	PSPROTO_DIGITAL,			//!< Original controller (SCPH-1010) protocol (8 digital buttons + START + SELECT)
+	PSPROTO_DUALSHOCK,			//!< DualShock (has analog axes)
+	PSPROTO_DUALSHOCK2,			//!< DualShock 2 (has analog axes and buttons)
+	PSPROTO_FLIGHTSTICK,		//!< Green-mode (like DualShock but missing SELECT, L3 and R3)
+	PSPROTO_NEGCON				//!< neGcon (has 1 analog X axis and analog Square, Circle and L1 buttons)
+};
+
+/** \brief Number of different protocols supported
+ *
+ * This is the number of entries in #PsxControllerProtocol.
+ */
+const byte PSPROTO_MAX = static_cast<byte> (PSPROTO_NEGCON) + 1;
+
 /** \brief Analog sticks minimum value
  * 
  * Minimum value reported by analog sticks. This usually means that the stick is
@@ -220,6 +244,31 @@ const byte ANALOG_MAX_VALUE = 255U;
  */
 const byte ANALOG_IDLE_VALUE = 128U;
 
+/** \brief neGcon I/II-button press threshold
+ *
+ * The neGcon does not report digital button press data for its analog buttons,
+ * so we have to make it up. The Square, Cross digital buttons will be
+ * reported as pressed when the analog value of the II and I buttons
+ * (respectively), goes over this threshold.
+ *
+ * \sa NEGCON_L_BUTTON_THRESHOLD
+ */
+const byte NEGCON_I_II_BUTTON_THRESHOLD = 128U;
+
+/** \brief neGcon L-button press threshold
+ *
+ * The neGcon does not report digital button press data for its analog buttons,
+ * so we have to make it up. The L1 digital button will be reported as pressed
+ * when the analog value of the L buttons goes over this threshold.
+ *
+ * This value has been tuned so that the L button gets digitally triggered at
+ * about the same point as the non-analog R button. This is done "empirically"
+ * and might need tuning on a different controller than the one I actually have.
+ * 
+ * \sa NEGCON_I_II_BUTTON_THRESHOLD
+ */
+const byte NEGCON_L_BUTTON_THRESHOLD = 240U;
+
 /** \brief PSX Controller Interface
  * 
  * This is the base class implementing interactions with PSX controllers. It is
@@ -252,6 +301,15 @@ protected:
 	 */
 	PsxButtons buttonWord;
 
+	/** \brief Controller Protocol
+	 *
+	 * The protocol controller data was interpreted with at the last call to
+	 * read()
+	 *
+	 * \sa getProtocol
+	 */
+	PsxControllerProtocol protocol;
+
 	//! \name Analog Stick Data
 	//! @{
 	byte lx;		//!< Horizontal axis of left stick [0-255, L to R]
@@ -259,7 +317,7 @@ protected:
 	byte rx;		//!< Horizontal axis of right stick [0-255, L to R]
 	byte ry;		//!< Vertical axis of right stick [0-255, U to D]
 	
-	boolean analogSticksValid;	//!< True if the above were valid in last call to read()
+	boolean analogSticksValid;	//!< True if the above were valid at the last call to read()
 	//! @}
 	
 	/** \brief Analog Button Data
@@ -440,6 +498,10 @@ protected:
 		return (status[1] & 0xF0) == 0xF0;
 	}
 
+	inline boolean isNegconReply (const byte *status) {
+		return status[1] == 0x23;
+	}
+
 public:
 	/** \brief Initialize library
 	 * 
@@ -461,6 +523,9 @@ public:
 		ry = ANALOG_IDLE_VALUE;
 
 		analogSticksValid = false;
+		memset (analogButtonData, 0, sizeof (analogButtonData));
+
+		protocol = PSPROTO_UNKNOWN;
 
 		// Some disposable readings to let the controller know we are here
 		for (byte i = 0; i < 5; ++i) {
@@ -677,6 +742,16 @@ public:
 	//! \name Polling Functions
 	//! @{
 
+	/** \brief Retrieve the controller protocol
+	 * 
+	 * This function retrieves the protocol the controller is using.
+	 * 
+	 * \return The controller protocol
+	 */
+	PsxControllerProtocol getProtocol () const {
+		return protocol;
+	}
+
 	/** \brief Poll the controller
 	 * 
 	 * This function polls the controller for button and stick data. It self-
@@ -714,23 +789,66 @@ public:
 				previousButtonWord = buttonWord;
 				buttonWord = ((PsxButtons) in[4] << 8) | in[3];
 
-				if (isDualShockReply (in) || isFlightstickReply (in)) {
-					// We have analog stick data
-					analogSticksValid = true;
-					rx = in[5];
-					ry = in[6];
-					lx = in[7];
-					ly = in[8];
-
-					if (isDualShock2Reply (in)) {
-						// We also have analog button data
-						analogButtonDataValid = true;
-						for (int i = 0; i < ANALOG_BTN_DATA_SIZE; ++i) {
-							analogButtonData[i] = in[i + 9];
-						}
-					}
+				// See if we have anything more to read
+				if (isDualShock2Reply (in)) {
+					protocol = PSPROTO_DUALSHOCK2;
+				} else if (isDualShockReply (in)) {
+					protocol = PSPROTO_DUALSHOCK;
+				} else if (isFlightstickReply (in)) {
+					protocol = PSPROTO_FLIGHTSTICK;
+				} else if (isNegconReply (in)) {
+					protocol = PSPROTO_NEGCON;
+				} else {
+					protocol = PSPROTO_DIGITAL;
 				}
 
+				switch (protocol) {
+					case PSPROTO_DUALSHOCK2:
+						// We also have analog button data
+						analogButtonDataValid = true;
+						for (int i = 0; i < PSX_ANALOG_BTN_DATA_SIZE; ++i) {
+							analogButtonData[i] = in[i + 9];
+						}
+						/* Now fall through to DualShock case, the next line
+						 * avoids GCC warning
+						 */
+						/* FALLTHRU */
+					case PSPROTO_DUALSHOCK:
+					case PSPROTO_FLIGHTSTICK:
+						// We have analog stick data
+						analogSticksValid = true;
+						rx = in[5];
+						ry = in[6];
+						lx = in[7];
+						ly = in[8];
+						break;
+					case PSPROTO_NEGCON:
+						// Map the twist axis to X axis of left analog
+						analogSticksValid = true;
+						lx = in[5];
+
+						// Map analog button data to their reasonable counterparts
+						analogButtonDataValid = true;
+						analogButtonData[PSAB_CROSS] = in[6];
+						analogButtonData[PSAB_SQUARE] = in[7];
+						analogButtonData[PSAB_L1] = in[8];
+
+						// Make up "missing" digital data
+						if (analogButtonData[PSAB_SQUARE] >= NEGCON_I_II_BUTTON_THRESHOLD) {
+							buttonWord &= ~PSB_SQUARE;
+						}
+						if (analogButtonData[PSAB_CROSS] >= NEGCON_I_II_BUTTON_THRESHOLD) {
+							buttonWord &= ~PSB_CROSS;
+						}
+						if (analogButtonData[PSAB_L1] >= NEGCON_L_BUTTON_THRESHOLD) {
+							buttonWord &= ~PSB_L1;
+						}
+						break;
+					default:
+						// We are already done
+						break;
+				}
+				
 				ret = true;
 			}
 		}
