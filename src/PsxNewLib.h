@@ -234,10 +234,6 @@ protected:
 	 */
 	static const byte BUFFER_SIZE = 32;
 
-	/** \brief Size of buffer holding analog button data
-	 */
-	static const byte ANALOG_BTN_DATA_SIZE = 12;
-
 	/** \brief Internal communication buffer
 	 * 
 	 * This is used to hold replies received from the controller.
@@ -458,10 +454,11 @@ public:
 	 * \return true if a supported controller was found, false otherwise
 	 */
 	virtual boolean begin () {
-		lx = 0;
-		ly = 0;
-		rx = 0;
-		ry = 0;
+		// Start with all analog axes at midway position
+		lx = ANALOG_IDLE_VALUE;		
+		ly = ANALOG_IDLE_VALUE;
+		rx = ANALOG_IDLE_VALUE;
+		ry = ANALOG_IDLE_VALUE;
 
 		analogSticksValid = false;
 
