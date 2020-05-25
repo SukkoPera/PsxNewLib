@@ -238,13 +238,13 @@ protected:
 	 */
 	byte inputBuffer[BUFFER_SIZE];
 
-	/** \brief Previous (Digital) Button status
+	/** \brief Previous (Digital) Button Status
 	 * 
 	 * The individual bits can be identified through #PsxButton.
 	 */
 	PsxButtons previousButtonWord;
 
-	/** \brief (Digital) Button status
+	/** \brief (Digital) Button Status
 	 * 
 	 * The individual bits can be identified through #PsxButton.
 	 */
