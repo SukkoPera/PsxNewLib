@@ -159,11 +159,18 @@ static const byte set_pressures[] = {0x01, 0x4F, 0x00, 0xFF, 0xFF, 0x03, 0x00, 0
 static const byte poll[] = {0x01, 0x42, 0x00, 0xFF, 0xFF};
 //! @}
 
+/** \brief Controller Type
+ *
+ * This is somehow derived from the reply to the #type_read command. It is NOT
+ * much trustworthy, so it might be removed in the future.
+ *
+ * \sa getControllerType
+ */
 enum PsxControllerType {
-	PSCTRL_UNKNOWN = 0,
-	PSCTRL_DUALSHOCK,
-	PSCTRL_DSWIRELESS,
-	PSCTRL_GUITHERO
+	PSCTRL_UNKNOWN = 0,			//!< No idea
+	PSCTRL_DUALSHOCK,			//!< DualShock or compatible
+	PSCTRL_DSWIRELESS,			//!< Sony DualShock Wireless
+	PSCTRL_GUITHERO,			//!< Guitar Hero controller
 };
 
 /** \brief Number of different controller types recognized
