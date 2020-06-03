@@ -200,14 +200,15 @@ enum PsxControllerProtocol {
 	PSPROTO_DUALSHOCK,			//!< DualShock (has analog axes)
 	PSPROTO_DUALSHOCK2,			//!< DualShock 2 (has analog axes and buttons)
 	PSPROTO_FLIGHTSTICK,		//!< Green-mode (like DualShock but missing SELECT, L3 and R3)
-	PSPROTO_NEGCON				//!< neGcon (has 1 analog X axis and analog Square, Circle and L1 buttons)
+	PSPROTO_NEGCON,				//!< Namco neGcon (has 1 analog X axis and analog Square, Circle and L1 buttons)
+	PSPROTO_JOGCON				//!< Namco Jogcon (Wheel is mapped to analog X axis, half a rotation in each direction)
 };
 
 /** \brief Number of different protocols supported
  *
  * This is the number of entries in #PsxControllerProtocol.
  */
-const byte PSPROTO_MAX = static_cast<byte> (PSPROTO_NEGCON) + 1;
+const byte PSPROTO_MAX = static_cast<byte> (PSPROTO_JOGCON) + 1;
 
 /** \brief Analog sticks minimum value
  * 
@@ -502,6 +503,10 @@ protected:
 		return status[1] == 0x23;
 	}
 
+	inline boolean isJogconReply (const byte *status) {
+		return (status[1] & 0xF0) == 0xE0;
+	}
+
 public:
 	/** \brief Initialize library
 	 * 
@@ -744,7 +749,8 @@ public:
 
 	/** \brief Retrieve the controller protocol
 	 * 
-	 * This function retrieves the protocol the controller is using.
+	 * This function retrieves the protocol that was used to interpret
+	 * controller data at the last call to read().
 	 * 
 	 * \return The controller protocol
 	 */
@@ -798,6 +804,8 @@ public:
 					protocol = PSPROTO_FLIGHTSTICK;
 				} else if (isNegconReply (in)) {
 					protocol = PSPROTO_NEGCON;
+				} else if (isJogconReply (in)) {
+					protocol = PSPROTO_JOGCON;
 				} else {
 					protocol = PSPROTO_DIGITAL;
 				}
@@ -843,6 +851,32 @@ public:
 						if (analogButtonData[PSAB_L1] >= NEGCON_L_BUTTON_THRESHOLD) {
 							buttonWord &= ~PSB_L1;
 						}
+						break;
+					case PSPROTO_JOGCON:
+						/* Map the wheel X axis of left analog, half a rotation
+						 * per direction: byte 5 has the wheel position, it is
+						 * 0 at startup, then we have 0xFF down to 0x80 for
+						 * left/CCW, and 0x01 up to 0x80 for right/CW
+						 *
+						 * byte 6 is the number of full CW rotations
+						 * byte 7 is 0 if wheel is still, 1 if it is rotating CW
+						 *        and 2 if rotation CCW
+						 * byte 8 seems to stay at 0
+						 *
+						 * We'll want to cap the movement halfway in each
+						 * direction, for ease of use/implementation.
+						 */
+						analogSticksValid = true;
+						if (in[6] < 0x80) {
+							// CW up to half
+							lx = in[5] < 0x80 ? in[5] : (0x80 - 1);
+						} else {
+							// CCW down to half
+							lx = in[5] > 0x80 ? in[5] : (0x80 + 1);
+						}
+
+						// Bring to the usual 0-255 range
+						lx += 0x80;
 						break;
 					default:
 						// We are already done
