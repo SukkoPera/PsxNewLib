@@ -51,7 +51,8 @@ The following table contains the results of my tests, all done at 3.3V voltage l
 |Asciiware   |Arcade Stick (SCEH-0002)                       |![Yes](img/yes.png)    |                                                                                                                                       |
 |Namco       |Arcade Stick (NPC-102 (SLEH-0004))             |![Yes](img/yes.png)    |                                                                                                                                       |
 |Logitech    |Cordless Action (G-X2D11)                      |![Yes](img/yes.png)    |                                                                                                                                       |
-|Namco       |Negcon (NPC-101)                               |![No](img/no.png)      |Looking for one                                                                                                                        |
+|Namco       |neGcon (NPC-101)                               |![Yes](img/yes.png)    |Experimental, in current master version only                                                                                           |
+|Namco       |JogCon (NPC-105)                               |![Yes](img/yes.png)    |Experimental, in current master version only                                                                                           |
 |EastVita    |Wireless Controller                            |![Yes](img/yes.png)    |Chinese knock-off, cheap but with surprising quality, pretty similar to the Lynxmotion controller, probably goes under other names, too|
 
 ## Debugging
