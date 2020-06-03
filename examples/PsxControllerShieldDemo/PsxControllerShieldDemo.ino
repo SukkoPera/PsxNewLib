@@ -239,7 +239,7 @@ boolean leftAnalogMoved (int8_t& x, int8_t& y) {
 }
 
 
-
+// Controller Type
 const char ctrlTypeUnknown[] PROGMEM = "Unknown";
 const char ctrlTypeDualShock[] PROGMEM = "Dual Shock";
 const char ctrlTypeDsWireless[] PROGMEM = "Dual Shock Wireless";
@@ -255,11 +255,26 @@ const char* const controllerTypeStrings[PSCTRL_MAX + 1] PROGMEM = {
 };
 
 
+// Controller Protocol
+const char ctrlProtoUnknown[] PROGMEM = "Unknown";
+const char ctrlProtoDigital[] PROGMEM = "Digital";
+const char ctrlProtoDualShock[] PROGMEM = "Dual Shock";
+const char ctrlProtoDualShock2[] PROGMEM = "Dual Shock 2";
+const char ctrlProtoFlightstick[] PROGMEM = "Flightstick";
+const char ctrlProtoNegcon[] PROGMEM = "neGcon";
+const char ctrlProtoJogcon[] PROGMEM = "Jogcon";
+const char ctrlProtoOutOfBounds[] PROGMEM = "(Out of bounds)";
 
-
-
-
-
+const char* const controllerProtoStrings[PSPROTO_MAX + 1] PROGMEM = {
+	ctrlProtoUnknown,
+	ctrlProtoDigital,
+	ctrlProtoDualShock,
+	ctrlProtoDualShock2,
+	ctrlProtoFlightstick,
+	ctrlProtoNegcon,
+	ctrlProtoJogcon,
+	ctrlTypeOutOfBounds
+};
 
  
 void setup () {
@@ -308,7 +323,13 @@ void loop () {
 					Serial.println (F("Cannot exit config mode"));
 				}
 			}
-			
+
+			psx.read ();		// Make sure the protocol is up to date
+			PsxControllerProtocol proto = psx.getProtocol ();
+			PGM_BYTES_P pname = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(controllerProtoStrings[proto < PSPROTO_MAX ? static_cast<byte> (proto) : PSPROTO_MAX])));
+			Serial.print (F("Controller Protocol is: "));
+			Serial.println (PSTR_TO_F (pname));
+
 			haveController = true;
 		}
 	} else {
