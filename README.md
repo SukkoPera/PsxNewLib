@@ -15,7 +15,9 @@ Currently, PsxNewLib provides access to the status of all digital buttons, analo
 It does NOT allow driving the vibration motors available on DualShock and later controllers. I'm not interested in this feature, but if you are, please open an Issue saying so. If many people ask, I will look into it.
 
 ## Using the Library
-First of all you must decide whether you want to use the hardware SPI pins or not. According to this, you either have to instantiate a **PsxControllerHwSpi** or **PsxControllerBitBang** object. Then you can just refer to the [example sketches](https://github.com/SukkoPera/PsxNewLib/tree/master/examples/) to learn how to use this library, as the interface should be quite straightforward.
+First of all, please note that this library depends on [greiman's DigitalIO library](https://github.com/greiman/DigitalIO), which you need to install as well. Unfortunately, the version that is available in the Library Manager has [a bug](https://github.com/greiman/DigitalIO/compare/1.0.0...master) that might cause an error during compilation. Because of this, I recommend not to install it through the Library Manager, but rather to get the master version and install it manually. You can also do that with [my fork](https://github.com/SukkoPera/DigitalIO), which supports a few more platforms.
+
+Moving on to the code, you need to decide whether you want to use the hardware SPI pins or not. According to this, you either have to instantiate a **PsxControllerHwSpi** or **PsxControllerBitBang** object. Then you can just refer to the [example sketches](https://github.com/SukkoPera/PsxNewLib/tree/master/examples/) to learn how to use this library, as the interface should be quite straightforward.
 
 The API has a few rough edges and is not guaranteed to be stable, but any changes will be to make it easier to use.
 
