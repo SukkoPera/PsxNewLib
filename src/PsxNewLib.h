@@ -271,6 +271,28 @@ const byte NEGCON_I_II_BUTTON_THRESHOLD = 128U;
  */
 const byte NEGCON_L_BUTTON_THRESHOLD = 240U;
 
+//! \brief Guncon read status
+enum GunconStatus {
+	//! Guncon data is valid
+	GUNCON_OK,
+
+	/** "Unexpected light": sensed light during VSYNC (e.g. from a Bulb or
+	 * Sunlight)
+	 */
+	GUNCON_UNEXPECTED_LIGHT,
+
+	/** "No light", this can mean either no light sensed at all (not aimed at
+	 * screen, or screen too dark: ERROR) or no light sensed yet (when trying to
+	 * read during rendering: BUSY)
+	 */
+	GUNCON_NO_LIGHT,
+
+	/** Data is not valid for some other reason (i.e.: no Guncon, read failed,
+	 * etc...)
+	 */
+	GUNCON_OTHER_ERROR
+};
+
 /** \brief PSX Controller Interface
  * 
  * This is the base class implementing interactions with PSX controllers. It is
@@ -1085,24 +1107,31 @@ public:
 	 * resolution of 385 pixels; which can be, for example, converted to 320
 	 * pixel resolution as X=X*320/385).
 	 *
-	 * <em>Caution:</em> The gun should be read only shortly after begin of
-	 *                   VBLANK.
+	 * <em>Caution:</em> The gun only returns meaningful data when read shortly
+	 * after begin of VBLANK (ie. AFTER rendering, but still BEFORE vsync), so
+	 * make sure to only consider readings returning \a GUNCON_OK;
 	 *
-	 * Error/Busy Codes:
-	 * - Coordinates X=0001h, Y=0005h indicate "unexpected light", i.e. sensed
-	 *   light during VSYNC (eg. from a Bulb or Sunlight).
-	 * - Coordinates X=0001h, Y=000Ah indicates "no light", this can mean either
-	 *   no light sensed at all (not aimed at screen, or screen too dark: ERROR)
-	 *   or no light sensed yet (when trying to read during rendering: BUSY).
-	 *
-	 * To avoid the BUSY error, one should read the gun shortly after begin of
-	 * VBLANK (ie. AFTER rendering, but still BEFORE vsync).
+	 * \sa GunconStatus
 	 */
-	boolean getGunconCoordinates (word& x, word& y) const {
-		x = (((word) ry) << 8) | rx;
-		y = (((word) ly) << 8) | lx;
+	GunconStatus getGunconCoordinates (word& x, word& y) const {
+		GunconStatus status = GUNCON_OTHER_ERROR;
 
-		return analogSticksValid;
+		if (protocol == PSPROTO_GUNCON && analogSticksValid) {
+			status = GUNCON_OK;
+			
+			x = (((word) ry) << 8) | rx;
+			y = (((word) ly) << 8) | lx;
+
+			if (x == 0x0001) {
+				if (y == 0x0005) {
+					status = GUNCON_UNEXPECTED_LIGHT;
+				} else if (y == 0x000A) {
+					status = GUNCON_NO_LIGHT;
+				}
+			}
+		}
+
+		return status;
 	}
 	
 	//! @}		// Polling Functions
