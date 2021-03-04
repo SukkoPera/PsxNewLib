@@ -212,26 +212,31 @@ boolean leftAnalogMoved (int8_t& x, int8_t& y) {
 	byte lx, ly;
 	
 	if (psx.getLeftAnalog (lx, ly)) {				// [0 ... 255]
-		int8_t deltaLX = lx - ANALOG_IDLE_VALUE;	// [-128 ... 127]
-		uint8_t deltaLXabs = abs (deltaLX);
-		if (deltaLXabs > ANALOG_DEAD_ZONE) {
-			x = deltaLX;
-			if (x == -128)
-				x = -127;
-			ret = true;
+		if (psx.getProtocol () != PSPROTO_NEGCON && psx.getProtocol () != PSPROTO_JOGCON) {
+			int8_t deltaLX = lx - ANALOG_IDLE_VALUE;	// [-128 ... 127]
+			uint8_t deltaLXabs = abs (deltaLX);
+			if (deltaLXabs > ANALOG_DEAD_ZONE) {
+				x = deltaLX;
+				if (x == -128)
+					x = -127;
+				ret = true;
+			} else {
+				x = 0;
+			}
+			
+			int8_t deltaLY = ly - ANALOG_IDLE_VALUE;
+			uint8_t deltaLYabs = abs (deltaLY);
+			if (deltaLYabs > ANALOG_DEAD_ZONE) {
+				y = deltaLY;
+				if (y == -128)
+					y = -127;
+				ret = true;
+			} else {
+				y = 0;
+			}
 		} else {
-			x = 0;
-		}
-		
-		int8_t deltaLY = ly - ANALOG_IDLE_VALUE;
-		uint8_t deltaLYabs = abs (deltaLY);
-		if (deltaLYabs > ANALOG_DEAD_ZONE) {
-			y = deltaLY;
-			if (y == -128)
-				y = -127;
-			ret = true;
-		} else {
-			y = 0;
+			// The neGcon and JogCon are more precise and work better without any dead zone
+			x = lx, y = ly;
 		}
 	}
 
