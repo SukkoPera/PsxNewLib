@@ -49,12 +49,12 @@ The following table contains the results of my tests, all done at 3.3V voltage l
 |Sony        |Dual Analog Controller (Europe, SCPH-1180e)    |![Yes](img/yes.png)    |Controller actually only has *SCPH-1180* on it, but I'm assuming it's the European version since it was bought in Italy                |
 |Sony        |DualShock Analog Controller (SCPH-1200)        |![Yes](img/yes.png)    |                                                                                                                                       |
 |Sony        |DualShock 2 Analog Controller (SCPH-10010)     |![Yes](img/yes.png)    |                                                                                                                                       |
-|Sony        |DualShock Controller for PSOne (SCPH-110)      |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
+|Sony        |DualShock Controller for PSOne (SCPH-110)      |![Yes](img/yes.png)    |                                                                                                                                       |
 |Asciiware   |Arcade Stick (SCEH-0002)                       |![Yes](img/yes.png)    |                                                                                                                                       |
 |Namco       |Arcade Stick (NPC-102 (SLEH-0004))             |![Yes](img/yes.png)    |                                                                                                                                       |
 |Logitech    |Cordless Action (G-X2D11)                      |![Yes](img/yes.png)    |                                                                                                                                       |
-|Namco       |neGcon (NPC-101)                               |![Yes](img/yes.png)    |Experimental, in current master version only                                                                                           |
-|Namco       |JogCon (NPC-105)                               |![Yes](img/yes.png)    |Experimental, in current master version only                                                                                           |
+|Namco       |neGcon (NPC-101)                               |![Yes](img/yes.png)    |Since v0.3                                                                                                                             |
+|Namco       |JogCon (NPC-105)                               |![Yes](img/yes.png)    |Since v0.3                                                                                                                             |
 |EastVita    |Wireless Controller                            |![Yes](img/yes.png)    |Chinese knock-off, cheap but with surprising quality, pretty similar to the Lynxmotion controller, probably goes under other names, too|
 
 ## Debugging
