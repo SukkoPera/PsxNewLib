@@ -77,7 +77,7 @@ void setup () {
 	// Init AbsMouse library
 	AbsMouse.init();
 
-	dstart (115200);
+	Serial.begin (115200);
 
 	Serial.println (F("Ready!"));
 }
@@ -109,7 +109,7 @@ void loop () {
 				if (psx.buttonJustPressed (PSB_CIRCLE)) {
 					Serial.println (F("Trigger press"));
 					AbsMouse.press (MOUSE_LEFT);
-				} else if (buttonJustReleased (PSB_CIRCLE)) {
+				} else if (psx.buttonJustReleased (PSB_CIRCLE)) {
 					Serial.println (F("Trigger release"));
 					AbsMouse.release (MOUSE_LEFT);
 				}
@@ -118,7 +118,7 @@ void loop () {
 				if (psx.buttonJustPressed (PSB_START)) {
 					Serial.println (F("Btn A press"));
 					enableMouseMove = !enableMouseMove;
-				} else if (buttonJustReleased (PSB_START)) {
+				} else if (psx.buttonJustReleased (PSB_START)) {
 					Serial.println (F("Btn A release"));
 				}
 				
@@ -126,7 +126,7 @@ void loop () {
 				if (psx.buttonJustPressed (PSB_CROSS)) {
 					Serial.println (F("Btn B press"));
 					AbsMouse.press (MOUSE_RIGHT);
-				} else if (buttonJustReleased (PSB_CROSS)) {
+				} else if (psx.buttonJustReleased (PSB_CROSS)) {
 					Serial.println (F("Btn B release"));
 					AbsMouse.release (MOUSE_RIGHT);
 				}
