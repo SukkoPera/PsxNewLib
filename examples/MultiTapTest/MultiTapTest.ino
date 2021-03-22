@@ -59,8 +59,28 @@ const byte PIN_PS2_CMD = 11;
 const byte PIN_PS2_DAT = 12;
 const byte PIN_PS2_CLK = 13;
 
-const byte PIN_BUTTONPRESS = A0;
-const byte PIN_HAVECONTROLLER = A1;
+const byte PIN_HAVEMULTITAP = 8;
+//~ const byte PIN_BUTTONPRESS = A0;
+
+const char ctrlProto00[] PROGMEM = "Unknown";
+const char ctrlProto01[] PROGMEM = "Digital";
+const char ctrlProto02[] PROGMEM = "Dual Shock";
+const char ctrlProto03[] PROGMEM = "Dual Shock 2";
+const char ctrlProto04[] PROGMEM = "Flight Stick";
+const char ctrlProto05[] PROGMEM = "neGcon";
+const char ctrlProto06[] PROGMEM = "JogCon";
+const char ctrlProto99[] PROGMEM = "(Out of bounds)";
+
+const char* const controllerProtocolStrings[PSPROTO_MAX + 1] PROGMEM = {
+	ctrlProto00,
+	ctrlProto01,
+	ctrlProto02,
+	ctrlProto03,
+	ctrlProto04,
+	ctrlProto05,
+	ctrlProto06,
+	ctrlProto99
+};
 
 const char buttonSelectName[] PROGMEM = "Select";
 const char buttonL3Name[] PROGMEM = "L3";
@@ -134,6 +154,13 @@ void dumpButtons (const byte ctrlId, PsxSingleController& cont) {
 
 	static AnalogDataCache adCache[4];
 
+	static PsxControllerProtocol protoCache[4] = {
+		PSPROTO_UNKNOWN,
+		PSPROTO_UNKNOWN,
+		PSPROTO_UNKNOWN,
+		PSPROTO_UNKNOWN
+	};
+	
 	AnalogDataCache& cache = adCache[ctrlId];
 	byte lx, ly, rx, ry;
 
@@ -141,13 +168,17 @@ void dumpButtons (const byte ctrlId, PsxSingleController& cont) {
 	cont.getRightAnalog (rx, ry);
 	if (cont.getButtonWord () != cont.getPreviousButtonWord () ||
 	    (cont.analogSticksValid && (lx != cache.lx || ly != cache.ly ||
-	     rx != cache.rx || ry != cache.ry))) {
+	     rx != cache.rx || ry != cache.ry)) ||
+	     cont.protocol != protoCache[ctrlId]) {
 			
 		PsxButtons psxButtons = cont.getButtonWord ();
 		
 		Serial.print (F("Controller "));
 		Serial.print ((char) ('A' + ctrlId));
-		Serial.print (F(": "));
+		Serial.print (F(" ("));
+		PGM_BYTES_P protoStr = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(controllerProtocolStrings[cont.protocol < PSPROTO_MAX ? cont.protocol : (int) PSPROTO_MAX])));
+		Serial.print (PSTR_TO_F (protoStr));
+		Serial.print (F("): "));
 
 		for (byte i = 0; i < PSX_BUTTONS_NO; ++i) {
 			byte b = psxButtonToIndex (psxButtons);
@@ -183,11 +214,12 @@ void dumpButtons (const byte ctrlId, PsxSingleController& cont) {
 			cache.rx = rx;
 			cache.ry = ry;
 		}
+
+		protoCache[ctrlId] = cont.protocol;
 		
 		Serial.println ();
 	}
 }
-
 
 
 PsxDriverHwSpi<PIN_PS2_ATT> psxDriver;
@@ -199,8 +231,8 @@ boolean haveMultitap = false;
 void setup () {
 	Serial.begin (115200);
 	
-	fastPinMode (PIN_BUTTONPRESS, OUTPUT);
-	fastPinMode (PIN_HAVECONTROLLER, OUTPUT);
+	//~ fastPinMode (PIN_BUTTONPRESS, OUTPUT);
+	fastPinMode (PIN_HAVEMULTITAP, OUTPUT);
 	
 	delay (300);
 
@@ -214,7 +246,7 @@ void setup () {
 }
  
 void loop () {
-	fastDigitalWrite (PIN_HAVECONTROLLER, haveMultitap);
+	fastDigitalWrite (PIN_HAVEMULTITAP, haveMultitap);
 	
 	if (!haveMultitap) {
 		if (multitap.begin (psxDriver)) {
