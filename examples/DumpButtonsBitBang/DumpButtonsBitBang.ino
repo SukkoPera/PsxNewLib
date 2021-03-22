@@ -27,7 +27,8 @@
  */
 
 #include <DigitalIO.h>
-#include <PsxControllerBitBang.h>
+#include <PsxNewLib.h>
+#include <PsxDriverBitBang.h>
 
 #include <avr/pgmspace.h>
 typedef const __FlashStringHelper * FlashStr;
@@ -161,17 +162,25 @@ const char* const controllerTypeStrings[PSCTRL_MAX + 1] PROGMEM = {
 
 
 
-PsxControllerBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psx;
+PsxDriverBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psxDriver;
+PsxController psx;
 
 boolean haveController = false;
  
 void setup () {
+	Serial.begin (115200);
+	
 	fastPinMode (PIN_BUTTONPRESS, OUTPUT);
 	fastPinMode (PIN_HAVECONTROLLER, OUTPUT);
 	
 	delay (300);
 
-	Serial.begin (115200);
+	if (!psxDriver.begin ()) {
+		Serial.println (F("Cannot initialize driver"));
+		while (42)
+			;
+	}
+
 	Serial.println (F("Ready!"));
 }
  
@@ -181,7 +190,7 @@ void loop () {
 	fastDigitalWrite (PIN_HAVECONTROLLER, haveController);
 	
 	if (!haveController) {
-		if (psx.begin ()) {
+		if (psx.begin (psxDriver)) {
 			Serial.println (F("Controller found!"));
 			delay (300);
 			if (!psx.enterConfigMode ()) {

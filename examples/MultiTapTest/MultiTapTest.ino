@@ -42,8 +42,9 @@
  */
 
 #include <DigitalIO.h>
-#include <PsxNewLib.h>
 #include <PsxDriverHwSpi.h>
+//~ #include <PsxDriverBitBang.h>
+#include <PsxMultiTap.h>
 
 #include <avr/pgmspace.h>
 typedef const __FlashStringHelper * FlashStr;
@@ -52,6 +53,11 @@ typedef const byte* PGM_BYTES_P;
 
 // This can be changed freely but please see above
 const byte PIN_PS2_ATT = 10;
+
+// These can be changed freely when using the bitbanged protocol
+const byte PIN_PS2_CMD = 11;
+const byte PIN_PS2_DAT = 12;
+const byte PIN_PS2_CLK = 13;
 
 const byte PIN_BUTTONPRESS = A0;
 const byte PIN_HAVECONTROLLER = A1;
@@ -118,13 +124,30 @@ FlashStr getButtonName (PsxButtons psxButton) {
 	return ret;
 }
 
-void dumpButtons (PsxButtons psxButtons) {
-	static PsxButtons lastB = 0;
+void dumpButtons (const byte ctrlId, PsxSingleController& cont) {
+	struct AnalogDataCache {
+		byte lx;
+		byte ly;
+		byte rx;
+		byte ry;
+	};
 
-	if (psxButtons != lastB) {
-		lastB = psxButtons;     // Save it before we alter it
+	static AnalogDataCache adCache[4];
+
+	AnalogDataCache& cache = adCache[ctrlId];
+	byte lx, ly, rx, ry;
+
+	cont.getLeftAnalog (lx, ly);
+	cont.getRightAnalog (rx, ry);
+	if (cont.getButtonWord () != cont.getPreviousButtonWord () ||
+	    (cont.analogSticksValid && (lx != cache.lx || ly != cache.ly ||
+	     rx != cache.rx || ry != cache.ry))) {
+			
+		PsxButtons psxButtons = cont.getButtonWord ();
 		
-		Serial.print (F("Pressed: "));
+		Serial.print (F("Controller "));
+		Serial.print ((char) ('A' + ctrlId));
+		Serial.print (F(": "));
 
 		for (byte i = 0; i < PSX_BUTTONS_NO; ++i) {
 			byte b = psxButtonToIndex (psxButtons);
@@ -140,44 +163,38 @@ void dumpButtons (PsxButtons psxButtons) {
 			}
 		}
 
+		if (psxButtons != cont.getPreviousButtonWord () && cont.analogSticksValid) {
+			Serial.print (", ");
+		}
+
+		if (cont.analogSticksValid) {
+			Serial.print (F("Left Analog x = "));
+			Serial.print (lx);
+			Serial.print (F(", y = "));
+			Serial.print (ly);
+			Serial.print (", ");
+			cache.lx = lx;
+			cache.ly = ly;
+
+			Serial.print (F("Right Analog x = "));
+			Serial.print (rx);
+			Serial.print (F(", y = "));
+			Serial.print (ry);			
+			cache.rx = rx;
+			cache.ry = ry;
+		}
+		
 		Serial.println ();
 	}
 }
 
-void dumpAnalog (const char *str, const byte x, const byte y) {
-	Serial.print (str);
-	Serial.print (F(" analog: x = "));
-	Serial.print (x);
-	Serial.print (F(", y = "));
-	Serial.println (y);
-}
-
-
-
-const char ctrlTypeUnknown[] PROGMEM = "Unknown";
-const char ctrlTypeDualShock[] PROGMEM = "Dual Shock";
-const char ctrlTypeDsWireless[] PROGMEM = "Dual Shock Wireless";
-const char ctrlTypeGuitHero[] PROGMEM = "Guitar Hero";
-const char ctrlTypeOutOfBounds[] PROGMEM = "(Out of bounds)";
-
-const char* const controllerTypeStrings[PSCTRL_MAX + 1] PROGMEM = {
-	ctrlTypeUnknown,
-	ctrlTypeDualShock,
-	ctrlTypeDsWireless,
-	ctrlTypeGuitHero,
-	ctrlTypeOutOfBounds
-};
-
-
-
-
-
 
 
 PsxDriverHwSpi<PIN_PS2_ATT> psxDriver;
-PsxController psx;
+//~ PsxDriverBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psx;
+PsxMultiTap multitap;
 
-boolean haveController = false;
+boolean haveMultitap = false;
  
 void setup () {
 	Serial.begin (115200);
@@ -197,68 +214,53 @@ void setup () {
 }
  
 void loop () {
-	static byte slx, sly, srx, sry;
+	fastDigitalWrite (PIN_HAVECONTROLLER, haveMultitap);
 	
-	fastDigitalWrite (PIN_HAVECONTROLLER, haveController);
-	
-	if (!haveController) {
-		if (psx.begin (psxDriver)) {
-			Serial.println (F("Controller found!"));
+	if (!haveMultitap) {
+		if (multitap.begin (psxDriver)) {
+			Serial.println (F("MultiTap found!"));
 			delay (300);
-			if (!psx.enterConfigMode ()) {
-				Serial.println (F("Cannot enter config mode"));
-			} else {
-				PsxControllerType ctype = psx.getControllerType ();
-				PGM_BYTES_P cname = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(controllerTypeStrings[ctype < PSCTRL_MAX ? static_cast<byte> (ctype) : PSCTRL_MAX])));
-				Serial.print (F("Controller Type is: "));
-				Serial.println (PSTR_TO_F (cname));
 
-				if (!psx.enableAnalogSticks ()) {
-					Serial.println (F("Cannot enable analog sticks"));
-				}
-				
-				//~ if (!psx.setAnalogMode (false)) {
-					//~ Serial.println (F("Cannot disable analog mode"));
+			//~ if (!psx.enterConfigMode ()) {
+				//~ Serial.println (F("Cannot enter config mode"));
+			//~ } else {
+				//~ PsxControllerType ctype = psx.getControllerType ();
+				//~ PGM_BYTES_P cname = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(controllerTypeStrings[ctype < PSCTRL_MAX ? static_cast<byte> (ctype) : PSCTRL_MAX])));
+				//~ Serial.print (F("Controller Type is: "));
+				//~ Serial.println (PSTR_TO_F (cname));
+
+				//~ if (!psx.enableAnalogSticks ()) {
+					//~ Serial.println (F("Cannot enable analog sticks"));
 				//~ }
-				//~ delay (10);
 				
-				if (!psx.enableAnalogButtons ()) {
-					Serial.println (F("Cannot enable analog buttons"));
-				}
-				
-				if (!psx.exitConfigMode ()) {
-					Serial.println (F("Cannot exit config mode"));
-				}
-			}
+				//~ if (!psx.exitConfigMode ()) {
+					//~ Serial.println (F("Cannot exit config mode"));
+				//~ }
+			//~ }
 			
-			haveController = true;
+			haveMultitap = true;
 		}
 	} else {
-		if (!psx.read ()) {
-			Serial.println (F("Controller lost :("));
-			haveController = false;
+		PsxSingleController *controllers;
+		
+		if (!multitap.readAll (&controllers)) {
+			Serial.println (F("MultiTap lost :("));
+			haveMultitap = false;
 		} else {
-			fastDigitalWrite (PIN_BUTTONPRESS, !!psx.getButtonWord ());
-			dumpButtons (psx.getButtonWord ());
+			//~ fastDigitalWrite (PIN_BUTTONPRESS, !!psx.getButtonWord ());
+			for (byte ctrlId = 0; ctrlId < 4; ++ctrlId) {
+				PsxSingleController& cont = controllers[ctrlId];
 
-			byte lx, ly;
-			psx.getLeftAnalog (lx, ly);
-			if (lx != slx || ly != sly) {
-				dumpAnalog ("Left", lx, ly);
-				slx = lx;
-				sly = ly;
-			}
-
-			byte rx, ry;
-			psx.getRightAnalog (rx, ry);
-			if (rx != srx || ry != sry) {
-				dumpAnalog ("Right", rx, ry);
-				srx = rx;
-				sry = ry;
+				if (cont.protocol != PSPROTO_UNKNOWN) {
+					dumpButtons (ctrlId, cont);
+				} else {
+					//~ Serial.print (F("Controller "));
+					//~ Serial.print ((char) ('A' + ctrlId));
+					//~ Serial.println (F(" not present"));
+				}
 			}
 		}
 	}
-
 	
 	delay (1000 / 60);
 }

@@ -34,7 +34,8 @@
  */
 
 // PsxControllerShield connects controller to HW SPI port through ICSP connector
-#include <PsxControllerHwSpi.h>
+#include <PsxNewLib.h>
+#include <PsxDriverHwSpi.h>
 #include <DigitalIO.h>
 
 #include <avr/pgmspace.h>
@@ -77,7 +78,8 @@ const byte PIN_ANALOG = 6;
  */
 const byte ANALOG_DEAD_ZONE = 50U;
 
-PsxControllerHwSpi<PIN_PS2_ATT> psx;
+PsxDriverHwSpi<PIN_PS2_ATT> psxDriver;
+PsxController psx;
 
 boolean haveController = false;
 
@@ -283,19 +285,27 @@ const char* const controllerProtoStrings[PSPROTO_MAX + 1] PROGMEM = {
 
  
 void setup () {
+	Serial.begin (115200);
+	
 	fastPinMode (PIN_HAVECONTROLLER, OUTPUT);
 	fastPinMode (PIN_BUTTONPRESS, OUTPUT);
 	fastPinMode (PIN_ANALOG, OUTPUT);
-	
-	delay (300);
 
-	Serial.begin (115200);
 	while (!Serial) {
 		// Wait for serial port to connect on Leonardo boards
 		fastDigitalWrite (PIN_HAVECONTROLLER, (millis () / 333) % 2);
 		fastDigitalWrite (PIN_BUTTONPRESS, (millis () / 333) % 2);
 		fastDigitalWrite (PIN_ANALOG, (millis () / 333) % 2);
 	}
+
+	delay (300);
+	
+	if (!psxDriver.begin ()) {
+		Serial.println (F("Cannot initialize driver"));
+		while (42)
+			;
+	}
+	
 	Serial.println (F("Ready!"));
 }
  
@@ -305,7 +315,7 @@ void loop () {
 	fastDigitalWrite (PIN_HAVECONTROLLER, haveController);
 	
 	if (!haveController) {
-		if (psx.begin ()) {
+		if (psx.begin (psxDriver)) {
 			Serial.println (F("Controller found!"));
 			delay (300);
 			if (!psx.enterConfigMode ()) {

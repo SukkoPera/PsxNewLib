@@ -40,7 +40,7 @@
  * This should actually be done by watching the \a Acknowledge line, but we are
  * ignoring it at the moment.
  */
-const byte INTER_CMD_BYTE_DELAY = 15;
+const byte INTER_CMD_BYTE_DELAY = 50;
 
 //~ /** \brief Command timeout (ms)
  //~ * 
@@ -69,10 +69,10 @@ class PsxDriver {
 protected:
 	/** \brief Size of internal communication buffer
 	 * 
-	 * This can be sized after the longest command reply (which is 21 bytes for
-	 * 01 42 when in DualShock 2 mode), but we're better safe than sorry.
+	 * This can be sized after the longest command reply, which is 32 bytes
+	 * (used by the PS1 MultiTap, for instance), plus the usual 3-byte header.
 	 */
-	static const byte BUFFER_SIZE = 32;
+	static const byte BUFFER_SIZE = 35;
 
 	/** \brief Internal communication buffer
 	 * 
@@ -124,7 +124,7 @@ public:
 #endif
 
 		for (byte i = 0; i < len; ++i) {
-			byte tmp = shiftInOut (out != NULL ? out[i] : 0x5A);
+			byte tmp = shiftInOut (out != NULL ? out[i] : 0x00);
 #ifdef DUMP_COMMS
 			inbuf[i] = tmp;
 #endif
@@ -217,7 +217,8 @@ public:
 	 * \return The calculated length
 	 */
 	inline static byte getReplyLength (const byte *buf) {
-		return (buf[1] & 0x0F) * 2;
+		const byte n = buf[1] & 0x0F;
+		return (n == 0 ? 16 : n) * 2;
 	}
 
 	inline static boolean isValidReply (const byte *status) {

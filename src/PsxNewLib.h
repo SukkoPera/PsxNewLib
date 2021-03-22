@@ -29,19 +29,6 @@
 #ifndef PSXNEWLIB_H_
 #define PSXNEWLIB_H_
 
-// Uncomment this to have all byte exchanges logged to serial
-//~ #define DUMP_COMMS
-
-/** \brief Command Inter-Byte Delay (us)
- * 
- * Commands are several bytes long. This is the time to wait between two
- * consecutive bytes.
- * 
- * This should actually be done by watching the \a Acknowledge line, but we are
- * ignoring it at the moment.
- */
-const byte INTER_CMD_BYTE_DELAY = 15;
-
 /** \brief Command timeout (ms)
  * 
  * Commands are sent to the controller repeatedly, until they succeed or time
@@ -270,6 +257,9 @@ const byte NEGCON_I_II_BUTTON_THRESHOLD = 128U;
  */
 const byte NEGCON_L_BUTTON_THRESHOLD = 240U;
 
+#include "PsxDriver.h"
+
+
 /** \brief PSX Controller Interface
  * 
  * This is the base class implementing interactions with PSX controllers. It is
@@ -277,19 +267,8 @@ const byte NEGCON_L_BUTTON_THRESHOLD = 240U;
  */
 class PsxController {
 protected:
-	/** \brief Size of internal communication buffer
-	 * 
-	 * This can be sized after the longest command reply (which is 21 bytes for
-	 * 01 42 when in DualShock 2 mode), but we're better safe than sorry.
-	 */
-	static const byte BUFFER_SIZE = 32;
-
-	/** \brief Internal communication buffer
-	 * 
-	 * This is used to hold replies received from the controller.
-	 */
-	byte inputBuffer[BUFFER_SIZE];
-
+	PsxDriver *driver;
+	
 	/** \brief Previous (Digital) Button Status
 	 * 
 	 * The individual bits can be identified through #PsxButton.
@@ -333,151 +312,6 @@ protected:
 	 */
 	boolean analogButtonDataValid;
 
-	/** \brief Assert the Attention line
-	 * 
-	 * This function must be implemented by derived classes and must set the
-	 * Attention line \a low so that the controller will pay attention to what
-	 * we will send.
-	 */
-	virtual void attention () = 0;
-
-	/** \brief Deassert the Attention line
-	 * 
-	 * This function must be implemented by derived classes and must set the
-	 * Attention line \a high so that the controller will no longer pay
-	 * attention to what we will send.
-	 */
-	virtual void noAttention () = 0;
-
-	/** \brief Transfer a single byte to/from the controller
-	 * 
-	 * This function must be implemented by derived classes and must transfer
-	 * a single <i>command</i> byte to the controller and read back a single
-	 * <i>data</i> byte.
-	 * 
-	 * \param[in] out The command byte to send the controller
-	 * \return The data byte returned by the controller
-	 */
-	virtual byte shiftInOut (const byte out) = 0;
-
-	/** \brief Transfer several bytes to/from the controller
-	 * 
-	 * This function transfers an array of <i>command</i> bytes to the
-	 * controller and reads back an equally sized array of <i>data</i> bytes.
-	 * 
-	 * \param[in] out The command bytes to send the controller
-	 * \param[out] in The data bytes returned by the controller, must be sized
-	 *                 to hold at least \a len bytes
-	 * \param[in] len The amount of bytes to be exchanged
-	 */
-	void shiftInOut (const byte *out, byte *in, const byte len) {
-#ifdef DUMP_COMMS
-		byte inbuf[len];
-#endif
-
-		for (byte i = 0; i < len; ++i) {
-			byte tmp = shiftInOut (out != NULL ? out[i] : 0x5A);
-#ifdef DUMP_COMMS
-			inbuf[i] = tmp;
-#endif
-			if (in != NULL) {
-				in[i] = tmp;
-			}
-
-			delayMicroseconds (INTER_CMD_BYTE_DELAY);   // Very important!
-		}
-
-#ifdef DUMP_COMMS
-		Serial.print (F("<-- "));
-		for (byte i = 0; i < len; ++i) {
-			if (out && out[i] < 0x10)
-				Serial.print (0);
-			Serial.print (out ? out[i]: 0x5A, HEX);
-			Serial.print (' ');
-		}
-		Serial.println ();
-
-		Serial.print (F("--> "));
-		for (byte i = 0; i < len; ++i) {
-			if (inbuf[i] < 0x10)
-				Serial.print (0);
-			Serial.print (inbuf[i], HEX);
-			Serial.print (' ');
-		}
-		Serial.println ();
-#endif
-	}
-
-	/** \brief Transfer several bytes to/from the controller
-	 * 
-	 * This function transfers an array of <i>command</i> bytes to the
-	 * controller and reads back the full reply of <i>data</i> bytes. The size
-	 * of the reply is calculated automatically and padding bytes (0x5A) are
-	 * appended to the outgoing message if it is shorter.
-	 * 
-	 * The reply is stored in an internal buffer and will be valid until the
-	 * next call to this function, so make sure to save anything if is needed.
-	 * 
-	 * \param[out] out The data bytes returned by the controller, must be sized
-	 *                 to hold at least \a len bytes
-	 * \param[in] len The amount of bytes to be exchanged
-	 * \return A pointer to a buffer containing the reply, whose size can be
-	 *         calculated with getReplyLength()
-	 */
-	byte *autoShift (const byte *out, const byte len) {
-		byte *ret = nullptr;
-
-		if (len >= 3 && len <= BUFFER_SIZE) {
-			// All commands have at least 3 bytes, so shift out those first
-			shiftInOut (out, inputBuffer, 3);
-			if (isValidReply (inputBuffer)) {
-				// Reply is good, get full length
-				byte replyLen = getReplyLength (inputBuffer);
-
-				// Shift out rest of command
-				if (len > 3) {
-					shiftInOut (out + 3, inputBuffer + 3, len - 3);
-				}
-
-				byte left = replyLen - len + 3;
-				//~ Serial.print ("len = ");
-				//~ Serial.print (replyLen);
-				//~ Serial.print (", left = ");
-				//~ Serial.println (left);
-				if (left == 0) {
-					// The whole reply was gathered
-					ret = inputBuffer;
-				} else if (len + left <= BUFFER_SIZE) {
-					// Part of reply is still missing and we have space for it
-					shiftInOut (NULL, inputBuffer + len, left);
-					ret = inputBuffer;
-				} else {
-					// Reply incomplete but not enough space provided
-				}
-			}
-		}
-
-		return ret;
-	}
-
-	/** \brief Get reply length
-	 * 
-	 * Calculates the length of a command reply, in bytes
-	 * 
-	 * \param[in] buf The buffer containing the reply, must be at least 2 bytes
-	 *                long
-	 * \return The calculated length
-	 */
-	byte getReplyLength (const byte *buf) const {
-		return (buf[1] & 0x0F) * 2;
-	}
-
-	inline boolean isValidReply (const byte *status) {
-		//~ return status[0] != 0xFF || status[1] != 0xFF || status[2] != 0xFF;
-		return status[1] != 0xFF && (status[2] == 0x5A || status[2] == 0x00);
-		//~ return /* status[0] == 0xFF && */ status[1] != 0xFF && status[2] == 0x5A;
-	}
-
 	// Green Mode controllers
 	inline boolean isFlightstickReply (const byte *status) {
 		return (status[1] & 0xF0) == 0x50;
@@ -520,7 +354,9 @@ public:
 	 * 
 	 * \return true if a supported controller was found, false otherwise
 	 */
-	virtual boolean begin () {
+	virtual boolean begin (PsxDriver& drv) {
+		driver = &drv;
+		
 		// Start with all analog axes at midway position
 		lx = ANALOG_IDLE_VALUE;		
 		ly = ANALOG_IDLE_VALUE;
@@ -559,9 +395,9 @@ public:
 
 		unsigned long start = millis ();
 		do {
-			attention ();
-			byte *in = autoShift (enter_config, 4);
-			noAttention ();
+			driver -> attention ();
+			byte *in = driver -> autoShift (enter_config, 4);
+			driver -> noAttention ();
 
 			ret = in != NULL && isConfigReply (in);
 
@@ -611,9 +447,9 @@ public:
 		unsigned long start = millis ();
 		byte cnt = 0;
 		do {
-			attention ();
-			byte *in = autoShift (out, 5);
-			noAttention ();
+			driver -> attention ();
+			byte *in = driver -> autoShift (out, 5);
+			driver -> noAttention ();
 
 			/* We can't know if we have successfully enabled analog mode until
 			 * we get out of config mode, so let's just be happy if we get a few
@@ -663,9 +499,9 @@ public:
 		unsigned long start = millis ();
 		byte cnt = 0;
 		do {
-			attention ();
-			byte *in = autoShift (out, sizeof (set_pressures));
-			noAttention ();
+			driver -> attention ();
+			byte *in = driver -> autoShift (out, sizeof (set_pressures));
+			driver -> noAttention ();
 
 			/* We can't know if we have successfully enabled analog mode until
 			 * we get out of config mode, so let's just be happy if we get a few
@@ -700,9 +536,9 @@ public:
 	PsxControllerType getControllerType () {
 		PsxControllerType ret = PSCTRL_UNKNOWN;
 
-		attention ();
-		byte *in = autoShift (type_read, 3);
-		noAttention ();
+		driver -> attention ();
+		byte *in = driver -> autoShift (type_read, 3);
+		driver -> noAttention ();
 
 		if (in != nullptr) {
 			const byte& controllerType = in[3];
@@ -725,11 +561,11 @@ public:
 
 		unsigned long start = millis ();
 		do {
-			attention ();
+			driver -> attention ();
 			//~ shiftInOut (poll, in, sizeof (poll));
 			//~ shiftInOut (exit_config, in, sizeof (exit_config));
-			byte *in = autoShift (exit_config, 4);
-			noAttention ();
+			byte *in = driver -> autoShift (exit_config, 4);
+			driver -> noAttention ();
 
 			ret = in != nullptr && !isConfigReply (in);
 
@@ -782,9 +618,9 @@ public:
 		analogSticksValid = false;
 		analogButtonDataValid = false;
 
-		attention ();
-		byte *in = autoShift (poll, 3);
-		noAttention ();
+		driver -> attention ();
+		byte *in = driver -> autoShift (poll, 3);
+		driver -> noAttention ();
 
 		if (in != NULL) {
 			if (isConfigReply (in)) {

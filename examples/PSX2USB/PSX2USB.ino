@@ -25,7 +25,8 @@
  * https://github.com/MHeironimus/ArduinoJoystickLibrary.
  */
 
-#include <PsxControllerBitBang.h>
+#include <PsxNewLib.h>
+#include <PsxDriverBitBang.h>
 #include <Joystick.h>
 
 /* We must use the bit-banging interface, as SPI pins are only available on the
@@ -43,7 +44,8 @@ const unsigned long POLLING_INTERVAL = 1000U / 50U;
 // Send debug messages to serial port
 //~ #define ENABLE_SERIAL_DEBUG
 
-PsxControllerBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psx;
+PsxDriverBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psxDriver;
+PsxController psx;
 
 Joystick_ usbStick (
 	JOYSTICK_DEFAULT_REPORT_ID,
@@ -93,9 +95,18 @@ const byte ANALOG_DEAD_ZONE = 50U;
 
 
 void setup () {
+	dstart (115200);
+		
 	// Lit the builtin led whenever buttons are pressed
 	pinMode (LED_BUILTIN, OUTPUT);
 
+	// Init PSX driver
+	if (!psxDriver.begin ()) {
+		debugln (F("Cannot initialize driver"));
+		while (42)
+			;
+	}
+	
 	// Init Joystick library
 	usbStick.begin (false);		// We'll call sendState() manually to minimize lag
 
@@ -104,8 +115,6 @@ void setup () {
 	usbStick.setYAxisRange (ANALOG_MIN_VALUE, ANALOG_MAX_VALUE);
 	usbStick.setRxAxisRange (ANALOG_MIN_VALUE, ANALOG_MAX_VALUE);
 	usbStick.setRyAxisRange (ANALOG_MIN_VALUE, ANALOG_MAX_VALUE);
-
-	dstart (115200);
 
 	debugln (F("Ready!"));
 }
@@ -117,7 +126,7 @@ void loop () {
 		last = millis ();
 		
 		if (!haveController) {
-			if (psx.begin ()) {
+			if (psx.begin (psxDriver)) {
 				debugln (F("Controller found!"));
 				if (!psx.enterConfigMode ()) {
 					debugln (F("Cannot enter config mode"));

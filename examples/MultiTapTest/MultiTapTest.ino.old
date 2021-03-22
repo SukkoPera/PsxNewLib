@@ -42,8 +42,8 @@
  */
 
 #include <DigitalIO.h>
-#include <PsxNewLib.h>
 #include <PsxDriverHwSpi.h>
+//~ #include <PsxDriverBitBang.h>
 
 #include <avr/pgmspace.h>
 typedef const __FlashStringHelper * FlashStr;
@@ -52,6 +52,11 @@ typedef const byte* PGM_BYTES_P;
 
 // This can be changed freely but please see above
 const byte PIN_PS2_ATT = 10;
+
+// These can be changed freely when using the bitbanged protocol
+const byte PIN_PS2_CMD = 11;
+const byte PIN_PS2_DAT = 12;
+const byte PIN_PS2_CLK = 13;
 
 const byte PIN_BUTTONPRESS = A0;
 const byte PIN_HAVECONTROLLER = A1;
@@ -174,25 +179,18 @@ const char* const controllerTypeStrings[PSCTRL_MAX + 1] PROGMEM = {
 
 
 
-PsxDriverHwSpi<PIN_PS2_ATT> psxDriver;
-PsxController psx;
+PsxDriverHwSpi<PIN_PS2_ATT> psx;
+//~ PsxDriverBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psx;
 
 boolean haveController = false;
  
 void setup () {
-	Serial.begin (115200);
-	
 	fastPinMode (PIN_BUTTONPRESS, OUTPUT);
 	fastPinMode (PIN_HAVECONTROLLER, OUTPUT);
 	
 	delay (300);
 
-	if (!psxDriver.begin ()) {
-		Serial.println (F("Cannot initialize driver"));
-		while (42)
-			;
-	}
-
+	Serial.begin (115200);
 	Serial.println (F("Ready!"));
 }
  
@@ -202,34 +200,35 @@ void loop () {
 	fastDigitalWrite (PIN_HAVECONTROLLER, haveController);
 	
 	if (!haveController) {
-		if (psx.begin (psxDriver)) {
+		if (psx.begin ()) {
 			Serial.println (F("Controller found!"));
 			delay (300);
-			if (!psx.enterConfigMode ()) {
-				Serial.println (F("Cannot enter config mode"));
+			if (psx.haveMultiTap ()) {
+				Serial.println (F("MultiTap found!"));
 			} else {
-				PsxControllerType ctype = psx.getControllerType ();
-				PGM_BYTES_P cname = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(controllerTypeStrings[ctype < PSCTRL_MAX ? static_cast<byte> (ctype) : PSCTRL_MAX])));
-				Serial.print (F("Controller Type is: "));
-				Serial.println (PSTR_TO_F (cname));
-
-				if (!psx.enableAnalogSticks ()) {
-					Serial.println (F("Cannot enable analog sticks"));
-				}
-				
-				//~ if (!psx.setAnalogMode (false)) {
-					//~ Serial.println (F("Cannot disable analog mode"));
-				//~ }
-				//~ delay (10);
-				
-				if (!psx.enableAnalogButtons ()) {
-					Serial.println (F("Cannot enable analog buttons"));
-				}
-				
-				if (!psx.exitConfigMode ()) {
-					Serial.println (F("Cannot exit config mode"));
-				}
+				Serial.println (F("MultiTap not found!"));
+				delay (5000UL);
 			}
+			//~ if (!psx.enterConfigMode ()) {
+				//~ Serial.println (F("Cannot enter config mode"));
+			//~ } else {
+				//~ PsxControllerType ctype = psx.getControllerType ();
+				//~ PGM_BYTES_P cname = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(controllerTypeStrings[ctype < PSCTRL_MAX ? static_cast<byte> (ctype) : PSCTRL_MAX])));
+				//~ Serial.print (F("Controller Type is: "));
+				//~ Serial.println (PSTR_TO_F (cname));
+
+				//~ if (!psx.enableAnalogSticks ()) {
+					//~ Serial.println (F("Cannot enable analog sticks"));
+				//~ }
+				
+				//~ if (!psx.enableAnalogButtons ()) {
+					//~ Serial.println (F("Cannot enable analog buttons"));
+				//~ }
+				
+				//~ if (!psx.exitConfigMode ()) {
+					//~ Serial.println (F("Cannot exit config mode"));
+				//~ }
+			//~ }
 			
 			haveController = true;
 		}

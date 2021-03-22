@@ -1,4 +1,4 @@
-#include "PsxNewLib.h"
+#include "PsxDriver.h"
 #include <SPI.h>
 #include <DigitalIO.h>
 
@@ -35,15 +35,12 @@ public:
 	}
 	
 	virtual void noAttention () override {
-		//~ delayMicroseconds (5);
-		
 		SPI.endTransaction ();
 
 		// Make sure CMD and CLK sit high
-		cmd.high ();
-		clk.high ();
+		cmd.high ();    // This actually does nothing as pin stays under SPI control, I guess
+		clk.high ();    // Ditto
 		att.high ();
-		delayMicroseconds (ATTN_DELAY);
 	}
 	
 	virtual boolean begin () override {
