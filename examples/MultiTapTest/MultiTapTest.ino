@@ -60,7 +60,7 @@ const byte PIN_PS2_DAT = 12;
 const byte PIN_PS2_CLK = 13;
 
 const byte PIN_HAVEMULTITAP = 8;
-//~ const byte PIN_BUTTONPRESS = A0;
+const byte PIN_BUTTONPRESS = 7;
 
 const char ctrlProto00[] PROGMEM = "Unknown";
 const char ctrlProto01[] PROGMEM = "Digital";
@@ -223,7 +223,7 @@ void dumpButtons (const byte ctrlId, PsxSingleController& cont) {
 
 
 PsxDriverHwSpi<PIN_PS2_ATT> psxDriver;
-//~ PsxDriverBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psx;
+//~ PsxDriverBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psxDriver;
 PsxMultiTap multitap;
 
 boolean haveMultitap = false;
@@ -231,7 +231,7 @@ boolean haveMultitap = false;
 void setup () {
 	Serial.begin (115200);
 	
-	//~ fastPinMode (PIN_BUTTONPRESS, OUTPUT);
+	fastPinMode (PIN_BUTTONPRESS, OUTPUT);
 	fastPinMode (PIN_HAVEMULTITAP, OUTPUT);
 	
 	delay (300);
@@ -253,24 +253,45 @@ void loop () {
 			Serial.println (F("MultiTap found!"));
 			delay (300);
 
-			//~ if (!psx.enterConfigMode ()) {
-				//~ Serial.println (F("Cannot enter config mode"));
-			//~ } else {
-				//~ PsxControllerType ctype = psx.getControllerType ();
-				//~ PGM_BYTES_P cname = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(controllerTypeStrings[ctype < PSCTRL_MAX ? static_cast<byte> (ctype) : PSCTRL_MAX])));
-				//~ Serial.print (F("Controller Type is: "));
-				//~ Serial.println (PSTR_TO_F (cname));
+			PsxSingleController cont;
+			for (byte i = 0; i < 4; ++i) {
+				cont.clear ();
+				if (multitap.read (i, cont)) {
+					/* Single-controller read was fine, so controller must be
+					 * there, try to enable the analog sticks
+					 */
+					PGM_BYTES_P protoStr = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(controllerProtocolStrings[cont.protocol < PSPROTO_MAX ? cont.protocol : (int) PSPROTO_MAX])));
+					Serial.print (F("Found "));
+					Serial.print (PSTR_TO_F (protoStr));
+					Serial.print (F(" controller on port "));
+					Serial.println ((char) ('A' + i));
+					
+					if (!multitap.enterConfigMode (i)) {
+						Serial.print (F("Cannot enter config mode on controller "));
+						Serial.println ((char) ('A' + i));
+					} else {
+						if (!multitap.enableAnalogSticks (i)) {
+							Serial.print (F("Cannot enable analog sticks on controller "));
+							Serial.println ((char) ('A' + i));
+						}
+						
+						if (!multitap.exitConfigMode (i)) {
+							Serial.print (F("Cannot exit config mode on controller "));
+							Serial.println ((char) ('A' + i));
+						}
+					}
+				} else {
+					Serial.print (F("Controller "));
+					Serial.print ((char) ('A' + i));
+					Serial.println (F(" not present"));
+				}
+			}
 
-				//~ if (!psx.enableAnalogSticks ()) {
-					//~ Serial.println (F("Cannot enable analog sticks"));
-				//~ }
-				
-				//~ if (!psx.exitConfigMode ()) {
-					//~ Serial.println (F("Cannot exit config mode"));
-				//~ }
-			//~ }
-			
-			haveMultitap = true;
+			if (!multitap.enableMultiTap ()) {
+				Serial.println (F("Cannot re-enable MultiTap"));
+			} else {	
+				haveMultitap = true;
+			}
 		}
 	} else {
 		PsxSingleController *controllers;
@@ -279,18 +300,17 @@ void loop () {
 			Serial.println (F("MultiTap lost :("));
 			haveMultitap = false;
 		} else {
-			//~ fastDigitalWrite (PIN_BUTTONPRESS, !!psx.getButtonWord ());
+			boolean light = false;
 			for (byte ctrlId = 0; ctrlId < 4; ++ctrlId) {
 				PsxSingleController& cont = controllers[ctrlId];
 
 				if (cont.protocol != PSPROTO_UNKNOWN) {
 					dumpButtons (ctrlId, cont);
-				} else {
-					//~ Serial.print (F("Controller "));
-					//~ Serial.print ((char) ('A' + ctrlId));
-					//~ Serial.println (F(" not present"));
+					light = light || !!cont.getButtonWord ();
 				}
 			}
+			
+			fastDigitalWrite (PIN_BUTTONPRESS, light);
 		}
 	}
 	
