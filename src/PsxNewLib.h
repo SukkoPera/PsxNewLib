@@ -44,7 +44,7 @@ class PsxController {
 protected:
 	PsxDriver *driver;
 
-	PsxSingleController controller;
+	PsxControllerData controller;
 	
 	// Green Mode controllers
 	inline boolean isFlightstickReply (const byte *status) {

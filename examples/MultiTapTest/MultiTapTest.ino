@@ -144,7 +144,7 @@ FlashStr getButtonName (PsxButtons psxButton) {
 	return ret;
 }
 
-void dumpButtons (const byte ctrlId, PsxSingleController& cont) {
+void dumpButtons (const byte ctrlId, PsxControllerData& cont) {
 	struct AnalogDataCache {
 		byte lx;
 		byte ly;
@@ -253,7 +253,7 @@ void loop () {
 			Serial.println (F("MultiTap found!"));
 			delay (300);
 
-			PsxSingleController cont;
+			PsxControllerData cont;
 			for (byte i = 0; i < 4; ++i) {
 				cont.clear ();
 				if (multitap.read (i, cont)) {
@@ -294,7 +294,7 @@ void loop () {
 			}
 		}
 	} else {
-		PsxSingleController *controllers;
+		PsxControllerData *controllers;
 		
 		if (!multitap.readAll (&controllers)) {
 			Serial.println (F("MultiTap lost :("));
@@ -302,7 +302,7 @@ void loop () {
 		} else {
 			boolean light = false;
 			for (byte ctrlId = 0; ctrlId < 4; ++ctrlId) {
-				PsxSingleController& cont = controllers[ctrlId];
+				PsxControllerData& cont = controllers[ctrlId];
 
 				if (cont.protocol != PSPROTO_UNKNOWN) {
 					dumpButtons (ctrlId, cont);

@@ -146,7 +146,7 @@ FlashStr getButtonName (PsxButtons psxButton) {
 	return ret;
 }
 
-void dumpButtons (const byte ctrlId, PsxSingleController& cont) {
+void dumpButtons (const byte ctrlId, PsxControllerData& cont) {
 	struct AnalogDataCache {
 		byte lx;
 		byte ly;
@@ -267,7 +267,7 @@ void loop () {
 			Serial.println (F("Found MultiTap!"));
 			delay (300);
 
-			PsxSingleController cont;
+			PsxControllerData cont;
 			for (byte i = 0; i < 4; ++i) {
 				cont.clear ();
 				if (multitap.read (i, cont)) {
@@ -308,7 +308,7 @@ void loop () {
 			}
 		} else {
 			// Check for single controller
-			PsxSingleController controller;
+			PsxControllerData controller;
 			if (multitap.read (0, controller)) {
 				Serial.println (F("Found Single Controller!"));
 				delay (300);
@@ -333,7 +333,7 @@ void loop () {
 		}
 	} else {
 		if (controllerType == CONT_MULTIPLE) {
-			PsxSingleController *controllers;
+			PsxControllerData *controllers;
 			
 			if (!multitap.readAll (&controllers)) {
 				Serial.println (F("MultiTap lost :("));
@@ -341,7 +341,7 @@ void loop () {
 			} else {
 				boolean light = false;
 				for (byte ctrlId = 0; ctrlId < 4; ++ctrlId) {
-					PsxSingleController& cont = controllers[ctrlId];
+					PsxControllerData& cont = controllers[ctrlId];
 
 					if (cont.protocol != PSPROTO_UNKNOWN) {
 						dumpButtons (ctrlId, cont);
@@ -352,7 +352,7 @@ void loop () {
 				fastDigitalWrite (PIN_BUTTONPRESS, light);
 			}
 		} else if (controllerType == CONT_SINGLE) {
-			PsxSingleController controller;
+			PsxControllerData controller;
 			
 			if (!multitap.read (0, controller)) {
 				Serial.println (F("Controller lost :("));

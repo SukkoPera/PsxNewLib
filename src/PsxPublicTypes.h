@@ -173,7 +173,7 @@ const byte ANALOG_IDLE_VALUE = 128U;
  */
 const byte PSX_ANALOG_BTN_DATA_SIZE = 12;
 
-struct PsxSingleController {
+struct PsxControllerData {
 		/** \brief Previous (Digital) Button Status
 	 * 
 	 * The individual bits can be identified through #PsxButton.

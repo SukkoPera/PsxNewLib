@@ -45,7 +45,7 @@ class PsxMultiTapTemplate {
 protected:
 	PsxDriver *driver;
 
-	PsxSingleController controllers[N_CONTROLLERS];
+	PsxControllerData controllers[N_CONTROLLERS];
 
 	// Green Mode controllers
 	inline static boolean isFlightstickReply (const byte *status) {
@@ -360,7 +360,7 @@ public:
 	 * 
 	 * \return true if the read was successful, false otherwise
 	 */
-	boolean read (const byte ctrlId, PsxSingleController& controller) {
+	boolean read (const byte ctrlId, PsxControllerData& controller) {
 		boolean ret = false;
 
 		controller.analogSticksValid = false;
@@ -478,7 +478,7 @@ public:
 		return ret;
 	}
 	
-	boolean readAll (PsxSingleController **outControllers) {
+	boolean readAll (PsxControllerData **outControllers) {
 		boolean ret = false;
 
 		byte out[35] = {};
@@ -502,7 +502,7 @@ public:
 				
 				byte *ptr = in + 2;
 				for (byte i = 0; i < N_CONTROLLERS; ++i) {
-					PsxSingleController& cont = controllers[i];
+					PsxControllerData& cont = controllers[i];
 					
 					cont.analogSticksValid = false;
 					cont.analogButtonDataValid = false;
