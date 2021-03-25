@@ -26,6 +26,8 @@
  * https://github.com/SukkoPera/PsxNewLib
  */
 
+#pragma once
+
 #include <Arduino.h>
 
 /** \brief Command timeout (ms)
