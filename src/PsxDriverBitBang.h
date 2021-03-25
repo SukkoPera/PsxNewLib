@@ -1,4 +1,4 @@
-#include "PsxNewLib.h"
+#include "PsxDriver.h"
 #include <DigitalIO.h>
 
 /** \brief Attention Delay
@@ -13,10 +13,8 @@ const byte ATTN_DELAY = 15;
  * Inverse of clock frequency, i.e.: time for a *full* clock cycle, from falling
  * edge to the next falling edge.
  */
-const byte CLK_PERIOD = 40;
+const byte CLK_PERIOD = 6;
 
-// Must be < CLK_PERIOD / 2
-const byte HOLD_TIME = 2;
 
 
 template <uint8_t PIN_ATT, uint8_t PIN_CMD, uint8_t PIN_DAT, uint8_t PIN_CLK>
@@ -37,27 +35,21 @@ protected:
 			// 2. When the clock edge drops low, the values on the line start to
 			// change
 			clk.low ();
-
-			delayMicroseconds (HOLD_TIME);
-			
 			if (bitRead (out, i)) {
 				cmd.high ();
 			} else {
 				cmd.low ();
 			}
 
-			delayMicroseconds (CLK_PERIOD / 2 - HOLD_TIME);
+			delayMicroseconds (CLK_PERIOD / 2);
 
 			// 3. When the clock goes from low to high, value are actually read
 			clk.high ();
-
-			delayMicroseconds (HOLD_TIME);
-			
 			if (dat) {
 				bitSet (in, i);
 			}
 
-			delayMicroseconds (CLK_PERIOD / 2 - HOLD_TIME);
+			delayMicroseconds (CLK_PERIOD / 2);
 		}
 
 		return in;
@@ -70,8 +62,6 @@ public:
 	}
 	
 	virtual void noAttention () override {
-		//~ delayMicroseconds (5);
-
 		cmd.high ();
 		clk.high ();
 		att.high ();
