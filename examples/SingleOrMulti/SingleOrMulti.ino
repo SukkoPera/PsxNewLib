@@ -196,22 +196,22 @@ void dumpButtons (const byte ctrlId, PsxControllerData& cont) {
 			}
 		}
 
-		if (psxButtons != cont.getPreviousButtonWord () && cont.analogSticksValid) {
+		if (cont.getButtonWord () != 0 && cont.analogSticksValid) {
 			Serial.print (", ");
 		}
 
 		if (cont.analogSticksValid) {
-			Serial.print (F("Left Analog x = "));
+			Serial.print (F("Left Analog x="));
 			Serial.print (lx);
-			Serial.print (F(", y = "));
+			Serial.print (F(",y="));
 			Serial.print (ly);
 			Serial.print (", ");
 			cache.lx = lx;
 			cache.ly = ly;
 
-			Serial.print (F("Right Analog x = "));
+			Serial.print (F("Right Analog x="));
 			Serial.print (rx);
-			Serial.print (F(", y = "));
+			Serial.print (F(",y="));
 			Serial.print (ry);			
 			cache.rx = rx;
 			cache.ry = ry;
@@ -239,6 +239,8 @@ ControllerType controllerType;
  
 void setup () {
 	Serial.begin (115200);
+	while (!Serial)
+		;
 	
 	fastPinMode (PIN_HAVEMULTITAP, OUTPUT);
 	fastPinMode (PIN_HAVESINGLE, OUTPUT);
