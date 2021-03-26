@@ -5,12 +5,12 @@
 PsxNewLib is an Arduino library that allows interfacing controllers designed for the Sony PlayStation and PlayStation 2 with Arduino boards.
 
 When I started developing my [PlayStation to Commodore adapter](https://github.com/SukkoPera/OpenPSX2AmigaPadAdapter), I originally used the [famous library by Bill Porter](http://www.billporter.info/2010/06/05/playstation-2-controller-arduino-library-v1-0/) to interface with the controller. This seemed to work well initially, but then a number of issues surfaced:
-- It does not support non-DualShock controllers, which basically rules out all the excellent arcade sticks made for the PlayStation.
-- It only supports bit-banging the protocol. This means that it can work on any pins, but since the protocol is essentially SPI, we could let the hardware take care of it, making communication more reliable.
+- It did not support non-DualShock controllers, which basically rules out all the excellent arcade sticks made for the PlayStation.
+- It only supported bit-banging the protocol. This means that it can work on any pins, but since the protocol is essentially SPI, we could let the hardware take care of it, making communication more reliable.
 - It just didn't work with some controllers, due to timing issues.
-- It looks more like a quick hack at the code level, rather than a polished and maintainable library.
+- It looked more like a quick hack at the code level, rather than a polished and maintainable library.
 
-In order to take of these issues, I started working on a new library, and so PsxNewLib was born.
+In order to fix these issues, I started working on a new library and so PsxNewLib was born.
 
 ## Features
 Currently, PsxNewLib provides access to the status of all digital buttons, analog sticks (on DualShock and later controllers) and analog buttons (on DualShock 2 and later controllers). It also provides functions to enable and disable the analog sticks and buttons.
