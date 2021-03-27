@@ -26,8 +26,7 @@
  * https://github.com/SukkoPera/PsxNewLib
  */
 
-#ifndef PSXMULTITAP_H_
-#define PSXMULTITAP_H_
+#pragma once
 
 #include "PsxDriver.h"
 #include "PsxPublicTypes.h"
@@ -583,5 +582,3 @@ public:
 };
 
 typedef PsxMultiTapTemplate<4> PsxMultiTap;
-
-#endif

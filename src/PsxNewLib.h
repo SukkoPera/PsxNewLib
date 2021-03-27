@@ -26,8 +26,7 @@
  * https://github.com/SukkoPera/PsxNewLib
  */
 
-#ifndef PSXNEWLIB_H_
-#define PSXNEWLIB_H_
+#pragma once
 
 #include "PsxDriver.h"
 #include "PsxPublicTypes.h"
@@ -587,5 +586,3 @@ public:
 	
 	//! @}		// Polling Functions
 };
-
-#endif

@@ -26,8 +26,7 @@
  * https://github.com/SukkoPera/PsxNewLib
  */
 
-#ifndef PSX_PUBTYPES_H_
-#define PSX_PUBTYPES_H_
+#pragma once
 
 #include <Arduino.h>
 
@@ -411,5 +410,3 @@ struct PsxControllerData {
 		return analogSticksValid;
 	}
 };
-
-#endif

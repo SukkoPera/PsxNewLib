@@ -26,8 +26,7 @@
  * https://github.com/SukkoPera/PsxNewLib
  */
 
-#ifndef PSXDRIVER_H_
-#define PSXDRIVER_H_
+#pragma once
 
 // Uncomment this to have all byte exchanges logged to serial
 //~ #define DUMP_COMMS
@@ -244,5 +243,3 @@ public:
 		return true;
 	}
 };
-
-#endif
