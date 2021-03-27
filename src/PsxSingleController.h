@@ -66,7 +66,7 @@ public:
 		// Some disposable readings to let the controller know we are here
 		for (byte i = 0; i < 5; ++i) {
 			read ();
-			delay (1);
+			delay (MIN_ATTN_INTERVAL);
 		}
 
 		return read ();
