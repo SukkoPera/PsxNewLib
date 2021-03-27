@@ -45,7 +45,7 @@ const unsigned long POLLING_INTERVAL = 1000U / 50U;
 //~ #define ENABLE_SERIAL_DEBUG
 
 PsxDriverBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psxDriver;
-PsxController psx;
+PsxSingleController psx;
 
 Joystick_ usbStick (
 	JOYSTICK_DEFAULT_REPORT_ID,

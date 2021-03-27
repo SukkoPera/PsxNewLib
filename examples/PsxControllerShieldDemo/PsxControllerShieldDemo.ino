@@ -35,7 +35,6 @@
 
 // PsxControllerShield connects controller to HW SPI port through ICSP connector
 #include <PsxNewLib.h>
-#include <PsxDriverHwSpi.h>
 #include <DigitalIO.h>
 
 #include <avr/pgmspace.h>
@@ -79,7 +78,7 @@ const byte PIN_ANALOG = 6;
 const byte ANALOG_DEAD_ZONE = 50U;
 
 PsxDriverHwSpi<PIN_PS2_ATT> psxDriver;
-PsxController psx;
+PsxSingleController psx;
 
 boolean haveController = false;
 

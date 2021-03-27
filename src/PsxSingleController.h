@@ -17,10 +17,10 @@
  * along with PsxNewLib. If not, see http://www.gnu.org/licenses.              *
  ******************************************************************************/
 /**
- * \file PsxMultiTap.h
+ * \file PsxNewLib.h
  * \author SukkoPera <software@sukkology.net>
- * \date 22 Mar 2021
- * \brief Playstation MultiTap interface library for Arduino
+ * \date 27 Jan 2020
+ * \brief Playstation controller interface library for Arduino
  * 
  * Please refer to the GitHub page and wiki for any information:
  * https://github.com/SukkoPera/PsxNewLib
@@ -39,36 +39,13 @@
  * This is the base class implementing interactions with PSX controllers. It is
  * partially abstract, so it is not supposed to be instantiated directly.
  */
-template <uint8_t N_CONTROLLERS>
-class PsxMultiTapTemplate {
+class PsxSingleController {
 protected:
 	PsxDriver *driver;
 
-	PsxControllerData controllers[N_CONTROLLERS];
+	PsxControllerData controller;
 
 public:
-	boolean enableMultiTap () {
-		/* This will enable the MultiTap, if present, but still return data as
-		* a normal read. Actual MultiTap data will be returned <i>at the next
-		* read</i>.
-		*/
-		driver -> attention ();
-		driver -> autoShift (multipoll, sizeof (multipoll));
-		driver -> noAttention ();
-
-		// Do not rush :)
-		delay (16);
-
-		/* This will return MultiTap data, if present, and cause the next read
-		* to return normal data again
-		*/
-		driver -> attention ();
-		byte *in = driver -> autoShift (multipoll, sizeof (multipoll));
-		driver -> noAttention ();
-
-		return in != NULL && isMultiTapReply (in);
-	}
-
 	/** \brief Initialize library
 	 * 
 	 * This function shall be called before any others, it will initialize the
@@ -83,12 +60,16 @@ public:
 	 */
 	virtual boolean begin (PsxDriver& drv) {
 		driver = &drv;
-		
-		//~ for (byte i = 0; i < N_CONTROLLERS; ++i) {
-			//~ controllers[i].clear ();
-		//~ }
 
-		return enableMultiTap ();
+		controller.clear ();
+		
+		// Some disposable readings to let the controller know we are here
+		for (byte i = 0; i < 5; ++i) {
+			read ();
+			delay (1);
+		}
+
+		return read ();
 	}
 
 	//! \name Configuration Mode Functions
@@ -101,23 +82,17 @@ public:
 	 * the controller in configuration mode.
 	 * 
 	 * Note that <i>Configuration Mode</i> is sometimes called <i>Escape Mode</i>.
-	 *
-	 * This will also disable the MultiTap polling mode.
 	 * 
 	 * \return true if Configuration Mode was entered successfully
 	 */
-	boolean enterConfigMode (const byte ctrlId) {
+	boolean enterConfigMode () {
 		boolean ret = false;
-
-		byte out[sizeof (enter_config)];
-		memcpy (out, enter_config, sizeof (enter_config));
-		out[0] = ctrlId + 1;
 
 		unsigned long start = millis ();
 		do {
-			driver -> attention ();
-			byte *in = driver -> autoShift (out, 4);
-			driver -> noAttention ();
+			driver -> selectController ();
+			byte *in = driver -> autoShift (enter_config, 4);
+			driver -> deselectController ();
 
 			ret = in != NULL && isConfigReply (in);
 
@@ -156,21 +131,20 @@ public:
 	 *         this does not fully guarantee that the analog sticks were enabled
 	 *         as this can only be checked after Configuration Mode is exited.
 	 */
-	boolean enableAnalogSticks (const byte ctrlId, const boolean enabled = true, const boolean locked = false) {
+	boolean enableAnalogSticks (bool enabled = true, bool locked = false) {
 		boolean ret = false;
 		byte out[sizeof (set_mode)];
 
 		memcpy (out, set_mode, sizeof (set_mode));
-		out[0] = ctrlId + 1;
 		out[3] = enabled ? 0x01 : 0x00;
 		out[4] = locked ? 0x03 : 0x00;
 
 		unsigned long start = millis ();
 		byte cnt = 0;
 		do {
-			driver -> attention ();
+			driver -> selectController ();
 			byte *in = driver -> autoShift (out, 5);
-			driver -> noAttention ();
+			driver -> deselectController ();
 
 			/* We can't know if we have successfully enabled analog mode until
 			 * we get out of config mode, so let's just be happy if we get a few
@@ -206,41 +180,41 @@ public:
 	 *         this does not fully guarantee that the analog sticks were enabled
 	 *         as this can only be checked after Configuration Mode is exited.
 	 */
-	//~ boolean enableAnalogButtons (bool enabled = true) {
-		//~ boolean ret = false;
-		//~ byte out[sizeof (set_mode)];
+	boolean enableAnalogButtons (bool enabled = true) {
+		boolean ret = false;
+		byte out[sizeof (set_mode)];
 
-		//~ memcpy (out, set_pressures, sizeof (set_pressures));
-		//~ if (!enabled) {
-			//~ out[3] = 0x00;
-			//~ out[4] = 0x00;
-			//~ out[5] = 0x00;
-		//~ }
+		memcpy (out, set_pressures, sizeof (set_pressures));
+		if (!enabled) {
+			out[3] = 0x00;
+			out[4] = 0x00;
+			out[5] = 0x00;
+		}
 
-		//~ unsigned long start = millis ();
-		//~ byte cnt = 0;
-		//~ do {
-			//~ driver -> attention ();
-			//~ byte *in = driver -> autoShift (out, sizeof (set_pressures));
-			//~ driver -> noAttention ();
+		unsigned long start = millis ();
+		byte cnt = 0;
+		do {
+			driver -> selectController ();
+			byte *in = driver -> autoShift (out, sizeof (set_pressures));
+			driver -> deselectController ();
 
-			//~ /* We can't know if we have successfully enabled analog mode until
-			 //~ * we get out of config mode, so let's just be happy if we get a few
-			 //~ * consecutive valid replies
-			 //~ */
-			//~ if (in != nullptr) {
-				//~ ++cnt;
-			//~ }
-			//~ ret = cnt >= 3;
+			/* We can't know if we have successfully enabled analog mode until
+			 * we get out of config mode, so let's just be happy if we get a few
+			 * consecutive valid replies
+			 */
+			if (in != nullptr) {
+				++cnt;
+			}
+			ret = cnt >= 3;
 
-			//~ if (!ret) {
-				//~ delay (COMMAND_RETRY_INTERVAL);
-			//~ }
-		//~ } while (!ret && millis () - start <= COMMAND_TIMEOUT);
-		//~ delay (MODE_SWITCH_DELAY);
+			if (!ret) {
+				delay (COMMAND_RETRY_INTERVAL);
+			}
+		} while (!ret && millis () - start <= COMMAND_TIMEOUT);
+		delay (MODE_SWITCH_DELAY);
 
-		//~ return ret;
-	//~ }
+		return ret;
+	}
 
 	/** \brief Retrieve the controller type
 	 * 
@@ -254,43 +228,39 @@ public:
 	 * 
 	 * \return The (tentative) controller type
 	 */
-	//~ PsxControllerType getControllerType () {
-		//~ PsxControllerType ret = PSCTRL_UNKNOWN;
+	PsxControllerType getControllerType () {
+		PsxControllerType ret = PSCTRL_UNKNOWN;
 
-		//~ driver -> attention ();
-		//~ byte *in = driver -> autoShift (type_read, 3);
-		//~ driver -> noAttention ();
+		driver -> selectController ();
+		byte *in = driver -> autoShift (type_read, 3);
+		driver -> deselectController ();
 
-		//~ if (in != nullptr) {
-			//~ const byte& controllerType = in[3];
-			//~ if (controllerType == 0x03) {
-				//~ ret = PSCTRL_DUALSHOCK;
-			//~ // } else if (controllerType == 0x01 && in[1] == 0x42) {
-				//~ // return 4;		// ???
-			//~ }  else if (controllerType == 0x01 && in[1] != 0x42) {
-				//~ ret = PSCTRL_GUITHERO;
-			//~ } else if (controllerType == 0x0C) {
-				//~ ret = PSCTRL_DSWIRELESS;
-			//~ }
-		//~ }
+		if (in != nullptr) {
+			const byte& controllerType = in[3];
+			if (controllerType == 0x03) {
+				ret = PSCTRL_DUALSHOCK;
+			//~ } else if (controllerType == 0x01 && in[1] == 0x42) {
+				//~ return 4;		// ???
+			}  else if (controllerType == 0x01 && in[1] != 0x42) {
+				ret = PSCTRL_GUITHERO;
+			} else if (controllerType == 0x0C) {
+				ret = PSCTRL_DSWIRELESS;
+			}
+		}
 
-		//~ return ret;
-	//~ }
+		return ret;
+	}
 
-	boolean exitConfigMode (const byte ctrlId) {
+	boolean exitConfigMode () {
 		boolean ret = false;
-
-		byte out[sizeof (exit_config)];
-		memcpy (out, exit_config, sizeof (exit_config));
-		out[0] = ctrlId + 1;
 
 		unsigned long start = millis ();
 		do {
-			driver -> attention ();
-			// shiftInOut (poll, in, sizeof (poll));
-			// shiftInOut (exit_config, in, sizeof (exit_config));
-			byte *in = driver -> autoShift (out, 4);
-			driver -> noAttention ();
+			driver -> selectController ();
+			//~ shiftInOut (poll, in, sizeof (poll));
+			//~ shiftInOut (exit_config, in, sizeof (exit_config));
+			byte *in = driver -> autoShift (exit_config, 4);
+			driver -> deselectController ();
 
 			ret = in != nullptr && !isConfigReply (in);
 
@@ -307,6 +277,17 @@ public:
 	
 	//! \name Polling Functions
 	//! @{
+
+	/** \brief Retrieve the controller protocol
+	 * 
+	 * This function retrieves the protocol that was used to interpret
+	 * controller data at the last call to read().
+	 * 
+	 * \return The controller protocol
+	 */
+	PsxControllerProtocol getProtocol () const {
+		return controller.protocol;
+	}
 
 	/** \brief Poll the controller
 	 * 
@@ -326,24 +307,20 @@ public:
 	 * 
 	 * \return true if the read was successful, false otherwise
 	 */
-	boolean read (const byte ctrlId, PsxControllerData& controller) {
+	boolean read () {
 		boolean ret = false;
 
 		controller.analogSticksValid = false;
 		controller.analogButtonDataValid = false;
 
-		byte out[sizeof (poll)];
-		memcpy (out, poll, sizeof (poll));
-		out[0] = ctrlId + 1;
-
-		driver -> attention ();
-		byte *in = driver -> autoShift (out, 3);
-		driver -> noAttention ();
+		driver -> selectController ();
+		byte *in = driver -> autoShift (poll, 3);
+		driver -> deselectController ();
 
 		if (in != NULL) {
 			if (isConfigReply (in)) {
 				// We're stuck in config mode, try to get out
-				exitConfigMode (ctrlId);
+				exitConfigMode ();
 			} else {
 				// We surely have buttons
 				controller.previousButtonWord = controller.buttonWord;
@@ -443,142 +420,169 @@ public:
 
 		return ret;
 	}
+
+	/** \brief Check if any button has changed state
+	 * 
+	 * \return true if any button has changed state with regard to the previous
+	 *         call to read(), false otherwise
+	 */
+	boolean buttonsChanged () const {
+		return ((controller.previousButtonWord ^ controller.buttonWord) > 0);
+	}
+
+	/** \brief Check if a button has changed state
+	 * 
+	 * \return true if \a button has changed state with regard to the previous
+	 *         call to read(), false otherwise
+	 */
+	boolean buttonChanged (const PsxButtons button) const {
+		return (((controller.previousButtonWord ^ controller.buttonWord) & button) > 0);
+	}
+
+	/** \brief Check if a button is currently pressed
+	 * 
+	 * \param[in] button The button to be checked
+	 * \return true if \a button was pressed in last call to read(), false
+	 *         otherwise
+	 */
+	boolean buttonPressed (const PsxButton button) const {
+		return buttonPressed (~controller.buttonWord, button);
+	}
+
+	/** \brief Check if a button is pressed in a Button Word
+	 * 
+	 * \param[in] buttons The button word to check in
+	 * \param[in] button The button to be checked
+	 * \return true if \a button is pressed in \a buttons, false otherwise
+	 */
+	boolean buttonPressed (const PsxButtons buttons, const PsxButton button) const {
+		return ((buttons & static_cast<const PsxButtons> (button)) > 0);
+	}
+
+	/** \brief Check if a button has just been pressed
+	 * 
+	 * \param[in] button The button to be checked
+	 * \return true if \a button was not pressed in the previous call to read()
+	 *         and is now, false otherwise
+	 */
+	boolean buttonJustPressed (const PsxButton button) const {
+		return (buttonChanged (button) & buttonPressed (button));
+	}
+
+	/** \brief Check if a button has just been released
+	 * 
+	 * \param[in] button The button to be checked
+	 * \return true if \a button was pressed in the previous call to read() and
+	 *         is not now, false otherwise
+	 */
+	boolean buttonJustReleased (const PsxButton button) const {
+		return (buttonChanged (button) & ((~controller.previousButtonWord & button) > 0));
+	}
+
+	/** \brief Check if NO button is pressed in a Button Word
+	 * 
+	 * \param[in] buttons The button word to check in
+	 * \return true if all buttons in \a buttons are released, false otherwise
+	 */
+	boolean noButtonPressed (const PsxButtons buttons) const {
+		return buttons == PSB_NONE;
+	}
+
+	/** \brief Check if NO button is currently pressed
+	 * 
+	 * \return true if all buttons were released in the last call to read(),
+	 *         false otherwise
+	 */
+	boolean noButtonPressed (void) const {
+		return controller.buttonWord == ~PSB_NONE;
+	}
 	
-	boolean readAll (PsxControllerData **outControllers) {
-		boolean ret = false;
+	/** \brief Retrieve the <em>Button Word</em>
+	 * 
+	 * The button word contains the status of all digital buttons and can be
+	 * retrieved so that it can be inspected later.
+	 * 
+	 * \sa buttonPressed
+	 * \sa noButtonPressed
+	 * 
+	 * \return the Button Word
+	 */
+	PsxButtons getButtonWord () const {
+		return ~controller.buttonWord;
+	}
 
-		byte out[35] = {};
-		memcpy (out, multipoll, sizeof (multipoll));
-		out[3] = 0x42;
-		out[11] = 0x42;
-		out[19] = 0x42;
-		out[27] = 0x42;
+	/** \brief Retrieve button pressure depth/strength
+	 * 
+	 * This function will return how deeply/strongly a button is pressed. It
+	 * will only work on DualShock 2 controllers after enabling this feature
+	 * with enableAnalogButtons().
+	 * 
+	 * Note that button pressure depth/strength is only available for the D-Pad
+	 * buttons, []/^/O/X, L1/2 and R1/2.
+	 *
+	 * \param[in] button the button the retrieve the pressure depth/strength of
+	 * \return the pressure depth/strength [0-255, Fully released to fully
+	 *         pressed]
+	 */
+	byte getAnalogButton (const PsxAnalogButton button) const {
+		byte ret = 0;
 		
-		driver -> attention ();
-		byte *in = driver -> autoShift (out, sizeof (out));
-		driver -> noAttention ();
-
-		if (in != NULL) {			
-			if (isMultiTapReply (in)) {
-				//~ for (byte i = 0; i < driver -> getReplyLength (in); ++i) {
-					//~ Serial.print (in[i], HEX);
-					//~ Serial.print (' ');
-				//~ }
-				//~ Serial.println ();
-				
-				byte *ptr = in + 2;
-				for (byte i = 0; i < N_CONTROLLERS; ++i) {
-					PsxControllerData& cont = controllers[i];
-					
-					cont.analogSticksValid = false;
-					cont.analogButtonDataValid = false;
-
-					cont.previousButtonWord = cont.buttonWord;
-					cont.buttonWord = ((PsxButtons) ptr[4] << 8) | ptr[3];
-
-					// See if we have anything more to read
-					// I guess the PS1 Multitap is not compatible with DS2 controllers...
-					/*if (isDualShock2Reply (ptr)) {
-						cont.protocol = PSPROTO_DUALSHOCK2;
-					} else*/ if (isDualShockReply (ptr)) {
-						cont.protocol = PSPROTO_DUALSHOCK;
-					} else if (isFlightstickReply (ptr)) {
-						cont.protocol = PSPROTO_FLIGHTSTICK;
-					} else if (isNegconReply (ptr)) {
-						cont.protocol = PSPROTO_NEGCON;
-					} else if (isJogconReply (ptr)) {
-						cont.protocol = PSPROTO_JOGCON;
-					} else if (isDigitalReply (ptr)) {
-						cont.protocol = PSPROTO_DIGITAL;
-					} else {
-						cont.protocol = PSPROTO_UNKNOWN;
-					}
-
-					switch (cont.protocol) {
-						//~ case PSPROTO_DUALSHOCK2:
-							//~ // We also have analog button data
-							//~ cont.analogButtonDataValid = true;
-							//~ for (int i = 0; i < PSX_ANALOG_BTN_DATA_SIZE; ++i) {
-								//~ cont.analogButtonData[i] = in[i + 9];
-							//~ }
-							//~ /* Now fall through to DualShock case, the next line
-							 //~ * avoids GCC warning
-							 //~ */
-							//~ /* FALLTHRU */
-						case PSPROTO_DUALSHOCK:
-						case PSPROTO_FLIGHTSTICK:
-							// We have analog stick data
-							cont.analogSticksValid = true;
-							cont.rx = ptr[5];
-							cont.ry = ptr[6];
-							cont.lx = ptr[7];
-							cont.ly = ptr[8];
-							break;
-						case PSPROTO_NEGCON:
-							// Map the twist axis to X axis of left analog
-							cont.analogSticksValid = true;
-							cont.lx = ptr[5];
-
-							// Map analog button data to their reasonable counterparts
-							cont.analogButtonDataValid = true;
-							cont.analogButtonData[PSAB_CROSS] = ptr[6];
-							cont.analogButtonData[PSAB_SQUARE] = ptr[7];
-							cont.analogButtonData[PSAB_L1] = ptr[8];
-
-							// Make up "missing" digital data
-							if (cont.analogButtonData[PSAB_SQUARE] >= NEGCON_I_II_BUTTON_THRESHOLD) {
-								cont.buttonWord &= ~PSB_SQUARE;
-							}
-							if (cont.analogButtonData[PSAB_CROSS] >= NEGCON_I_II_BUTTON_THRESHOLD) {
-								cont.buttonWord &= ~PSB_CROSS;
-							}
-							if (cont.analogButtonData[PSAB_L1] >= NEGCON_L_BUTTON_THRESHOLD) {
-								cont.buttonWord &= ~PSB_L1;
-							}
-							break;
-						case PSPROTO_JOGCON:
-							/* Map the wheel X axis of left analog, half a rotation
-							 * per direction: byte 5 has the wheel position, it is
-							 * 0 at startup, then we have 0xFF down to 0x80 for
-							 * left/CCW, and 0x01 up to 0x80 for right/CW
-							 *
-							 * byte 6 is the number of full CW rotations
-							 * byte 7 is 0 if wheel is still, 1 if it is rotating CW
-							 *        and 2 if rotation CCW
-							 * byte 8 seems to stay at 0
-							 *
-							 * We'll want to cap the movement halfway in each
-							 * direction, for ease of use/implementation.
-							 */
-							cont.analogSticksValid = true;
-							if (ptr[6] < 0x80) {
-								// CW up to half
-								cont.lx = ptr[5] < 0x80 ? ptr[5] : (0x80 - 1);
-							} else {
-								// CCW down to half
-								cont.lx = ptr[5] > 0x80 ? ptr[5] : (0x80 + 1);
-							}
-
-							// Bring to the usual 0-255 range
-							cont.lx += 0x80;
-							break;
-						default:
-							// We are already done
-							break;
-					}
-
-					ptr += 8;
-				}
-
-				*outControllers = controllers;
-				ret = true;
-			}
+		if (controller.analogButtonDataValid) {
+			ret = controller.analogButtonData[button];
+		//~ } else if (buttonPressed (button)) {		// FIXME
+			//~ // No analog data, assume fully pressed or fully released
+			//~ ret = 0xFF;
 		}
 
 		return ret;
 	}
+
+	/** \brief Retrieve all analog button data
+	 */
+	const byte* getAnalogButtonData () const {
+		return controller.analogButtonDataValid ? controller.analogButtonData : NULL;
+	}
+
+	/** \brief Retrieve position of the \a left analog stick
+	 * 
+	 * This function will return the absolute position of the left analog stick.
+	 * 
+	 * Note that not all controllers have analog sticks, in which case this
+	 * function will return false.
+	 * 
+	 * \param[in] x A variable where the horizontal position will be stored
+	 *              [0-255, L to R]
+	 * \param[in] y A variable where the vertical position will be stored
+	 *              [0-255, U to D]
+	 * \return true if the returned position is valid, false otherwise
+	 */
+	boolean getLeftAnalog (byte& x, byte& y) const {
+		x = controller.lx;
+		y = controller.ly;
+
+		return controller.analogSticksValid;
+	}
+
+	/** \brief Retrieve position of the \a right analog stick
+	 * 
+	 * This function will return the absolute position of the right analog
+	 * stick.
+	 * 
+	 * Note that not all controllers have analog sticks, in which case this
+	 * function will return false.
+	 * 
+	 * \param[in] x A variable where the horizontal position will be stored
+	 *              [0-255, L to R]
+	 * \param[in] y A variable where the vertical position will be stored
+	 *              [0-255, U to D]
+	 * \return true if the returned position is valid, false otherwise
+	 */
+	boolean getRightAnalog (byte& x, byte& y) {
+		x = controller.rx;
+		y = controller.ry;
+
+		return controller.analogSticksValid;
+	}
 	
 	//! @}		// Polling Functions
 };
-
-typedef PsxMultiTapTemplate<4> PsxMultiTap;

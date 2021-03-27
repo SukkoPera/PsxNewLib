@@ -28,7 +28,6 @@
 
 #include <DigitalIO.h>
 #include <PsxNewLib.h>
-#include <PsxDriverBitBang.h>
 
 #include <avr/pgmspace.h>
 typedef const __FlashStringHelper * FlashStr;
@@ -163,7 +162,7 @@ const char* const controllerTypeStrings[PSCTRL_MAX + 1] PROGMEM = {
 
 
 PsxDriverBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psxDriver;
-PsxController psx;
+PsxSingleController psx;
 
 boolean haveController = false;
  

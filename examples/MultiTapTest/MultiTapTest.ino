@@ -42,9 +42,7 @@
  */
 
 #include <DigitalIO.h>
-#include <PsxDriverHwSpi.h>
-//~ #include <PsxDriverBitBang.h>
-#include <PsxMultiTap.h>
+#include <PsxNewLib.h>
 
 #include <avr/pgmspace.h>
 typedef const __FlashStringHelper * FlashStr;
@@ -224,7 +222,7 @@ void dumpButtons (const byte ctrlId, PsxControllerData& cont) {
 
 PsxDriverHwSpi<PIN_PS2_ATT> psxDriver;
 //~ PsxDriverBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psxDriver;
-PsxMultiTap multitap;
+PsxMultiController psx;
 
 boolean haveMultitap = false;
  
@@ -251,14 +249,14 @@ void loop () {
 	fastDigitalWrite (PIN_HAVEMULTITAP, haveMultitap);
 	
 	if (!haveMultitap) {
-		if (multitap.begin (psxDriver)) {
+		if (psx.begin (psxDriver)) {
 			Serial.println (F("MultiTap found!"));
 			delay (300);
 
 			PsxControllerData cont;
 			for (byte i = 0; i < 4; ++i) {
 				cont.clear ();
-				if (multitap.read (i, cont)) {
+				if (psx.read (i, cont)) {
 					/* Single-controller read was fine, so controller must be
 					 * there, try to enable the analog sticks
 					 */
@@ -268,16 +266,16 @@ void loop () {
 					Serial.print (F(" controller on port "));
 					Serial.println ((char) ('A' + i));
 					
-					if (!multitap.enterConfigMode (i)) {
+					if (!psx.enterConfigMode (i)) {
 						Serial.print (F("Cannot enter config mode on controller "));
 						Serial.println ((char) ('A' + i));
 					} else {
-						if (!multitap.enableAnalogSticks (i)) {
+						if (!psx.enableAnalogSticks (i)) {
 							Serial.print (F("Cannot enable analog sticks on controller "));
 							Serial.println ((char) ('A' + i));
 						}
 						
-						if (!multitap.exitConfigMode (i)) {
+						if (!psx.exitConfigMode (i)) {
 							Serial.print (F("Cannot exit config mode on controller "));
 							Serial.println ((char) ('A' + i));
 						}
@@ -289,7 +287,7 @@ void loop () {
 				}
 			}
 
-			if (!multitap.enableMultiTap ()) {
+			if (!psx.enableMultiTap ()) {
 				Serial.println (F("Cannot re-enable MultiTap"));
 			} else {	
 				haveMultitap = true;
@@ -298,7 +296,7 @@ void loop () {
 	} else {
 		PsxControllerData *controllers;
 		
-		if (!multitap.readAll (&controllers)) {
+		if (!psx.readAll (&controllers)) {
 			Serial.println (F("MultiTap lost :("));
 			haveMultitap = false;
 		} else {

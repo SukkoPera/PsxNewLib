@@ -17,7 +17,7 @@
  * along with PsxNewLib. If not, see http://www.gnu.org/licenses.              *
  ******************************************************************************/
 /**
- * \file PsxMultiTap.h
+ * \file PsxCommands.h
  * \author SukkoPera <software@sukkology.net>
  * \date 22 Mar 2021
  * \brief Playstation Controller Commands

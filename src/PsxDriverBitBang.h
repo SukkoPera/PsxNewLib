@@ -29,25 +29,16 @@
 #include "PsxDriver.h"
 #include <DigitalIO.h>
 
-/** \brief Attention Delay
- *
- * Time between attention being issued to the controller and the first clock
- * edge (us).
- */
-const byte ATTN_DELAY = 15;
-
-/** \brief Clock Period
- *
- * Inverse of clock frequency, i.e.: time for a *full* clock cycle, from falling
- * edge to the next falling edge.
- */
-const byte CLK_PERIOD = 6;
-
-
-
 template <uint8_t PIN_ATT, uint8_t PIN_CMD, uint8_t PIN_DAT, uint8_t PIN_CLK>
 class PsxDriverBitBang: public PsxDriver {
 private:
+	/** \brief Clock Period
+	 *
+	 * Inverse of clock frequency, i.e.: time for a *full* clock cycle, from falling
+	 * edge to the next falling edge.
+	 */
+	static const byte CLK_PERIOD = 6;
+
 	DigitalPin<PIN_ATT> att;
 	DigitalPin<PIN_CLK> clk;
 	DigitalPin<PIN_CMD> cmd;
@@ -86,14 +77,12 @@ protected:
 public:
 	virtual void attention () override {
 		att.low ();
-		delayMicroseconds (ATTN_DELAY);
 	}
 	
 	virtual void noAttention () override {
 		cmd.high ();
 		clk.high ();
 		att.high ();
-		//~ delayMicroseconds (ATTN_DELAY);
 	}
 	
 	virtual boolean begin () override {

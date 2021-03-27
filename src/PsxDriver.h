@@ -28,6 +28,9 @@
 
 #pragma once
 
+#include "PsxOptions.h"
+
+
 // Uncomment this to have all byte exchanges logged to serial
 //~ #define DUMP_COMMS
 
@@ -79,6 +82,12 @@ protected:
 	 */
 	byte inputBuffer[BUFFER_SIZE];
 
+	/** \brief Time last interaction with the controller took place at.
+	 *
+	 * We don't want to flood the controller, this helps us behave.
+	 */
+	unsigned long lastCmdTime;
+
 	/** \brief Transfer a single byte to/from the controller
 	 * 
 	 * This function must be implemented by derived classes and must transfer
@@ -106,6 +115,22 @@ public:
 	 * attention to what we will send.
 	 */
 	virtual void noAttention () = 0;
+
+	virtual void selectController () {
+		while (millis () - lastCmdTime <= MIN_ATTN_INTERVAL)
+			;
+
+		attention ();
+
+		delayMicroseconds (ATTN_DELAY);
+	}
+	
+	virtual void deselectController () {
+		noAttention ();
+
+		lastCmdTime = millis ();
+	}
+	
 	
 	/** \brief Transfer several bytes to/from the controller
 	 * 
@@ -239,7 +264,9 @@ public:
 	 * \return true if a supported controller was found, false otherwise
 	 */
 	virtual boolean begin () {
-		// Nothing to do for the moment, but please make sure to call in subclasses
+		// Not much to do for the moment, but please make sure to call in subclasses
+		lastCmdTime = 0;
+		
 		return true;
 	}
 };

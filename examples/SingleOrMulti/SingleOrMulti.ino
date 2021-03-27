@@ -42,10 +42,7 @@
  */
 
 #include <DigitalIO.h>
-#include <PsxDriverHwSpi.h>
-//~ #include <PsxDriverBitBang.h>
 #include <PsxNewLib.h>
-#include <PsxMultiTap.h>
 
 #include <avr/pgmspace.h>
 typedef const __FlashStringHelper * FlashStr;
@@ -224,9 +221,10 @@ void dumpButtons (const byte ctrlId, PsxControllerData& cont) {
 }
 
 
-PsxDriverHwSpi<PIN_PS2_ATT> psxDriver;
+//~ PsxDriverHwSpi<PIN_PS2_ATT> psxDriver;
 //~ PsxDriverBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psxDriver;
-PsxMultiTap multitap;
+PsxDriverDioSoftSpi<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psxDriver;
+PsxMultiController multitap;
 
 enum ControllerType {
 	CONT_NONE,

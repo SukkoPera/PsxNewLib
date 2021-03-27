@@ -29,13 +29,6 @@
 #include "PsxDriver.h"
 #include <DigitalIO.h>
 
-/** \brief Attention Delay
- *
- * Time between attention being issued to the controller and the first clock
- * edge (us).
- */
-const byte ATTN_DELAY = 15;
-
 template <uint8_t PIN_ATT, uint8_t PIN_CMD, uint8_t PIN_DAT, uint8_t PIN_CLK>
 class PsxDriverDioSoftSpi: public PsxDriver {
 private:
@@ -62,17 +55,12 @@ protected:
 public:
 	virtual void attention () override {
 		att.low ();
-		delayMicroseconds (ATTN_DELAY);
-		//~ cmd.high ();
-		//~ clk.high ();
-		//~ dat.high ();     // spi.begin() disables pull-up, re-enable it
 	}
 
 	virtual void noAttention () override {
 		cmd.high ();
 		clk.high ();
 		att.high ();
-		//~ delayMicroseconds (ATTN_DELAY);
 	}
 	
 	virtual boolean begin () override {

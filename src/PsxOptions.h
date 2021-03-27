@@ -17,7 +17,7 @@
  * along with PsxNewLib. If not, see http://www.gnu.org/licenses.              *
  ******************************************************************************/
 /**
- * \file PsxMultiTap.h
+ * \file PsxOptions.h
  * \author SukkoPera <software@sukkology.net>
  * \date 22 Mar 2021
  * \brief Playstation Controller Misc Options
@@ -29,6 +29,25 @@
 #pragma once
 
 #include <Arduino.h>
+
+/** \brief Attention Delay
+ *
+ * Time between attention being issued to the controller and the first clock
+ * edge (us).
+ */
+const byte ATTN_DELAY = 15;
+
+/** \brief Minimum Attention Interval
+ *
+ * PSX controllers were only designed to be interacted with once per frame. We
+ * don't want to flood them with communication requests, so this is the minimum
+ * interval that must elapse between the end of a command and the beginning of
+ * the following one (us).
+ * 
+ * Note that maybe configuration commands can be send more rapidly, but we
+ * always wait at the moment.
+ */
+const byte MIN_ATTN_INTERVAL = 1000 / 60;
 
 /** \brief Command timeout (ms)
  * 

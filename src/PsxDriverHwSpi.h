@@ -30,15 +30,9 @@
 #include <SPI.h>
 #include <DigitalIO.h>
 
-/** \brief Attention Delay
- *
- * Time between attention being issued to the controller and the first clock
- * edge (us).
- */
-const byte ATTN_DELAY = 15;
-
 // Set up the speed, data order and data mode
 static SPISettings spiSettings (250000, LSBFIRST, SPI_MODE3);
+
 
 template <uint8_t PIN_ATT>
 class PsxDriverHwSpi: public PsxDriver {
@@ -58,8 +52,6 @@ public:
 		att.low ();
 
 		SPI.beginTransaction (spiSettings);
-
-		delayMicroseconds (ATTN_DELAY);
 	}
 	
 	virtual void noAttention () override {
