@@ -47,39 +47,6 @@ protected:
 
 	PsxControllerData controllers[N_CONTROLLERS];
 
-	// Green Mode controllers
-	inline static boolean isFlightstickReply (const byte *status) {
-		return (status[1] & 0xF0) == 0x50;
-	}
-
-	inline static boolean isDualShockReply (const byte *status) {
-		return (status[1] & 0xF0) == 0x70;
-	}
-
-	inline static boolean isDualShock2Reply (const byte *status) {
-		return status[1] == 0x79;
-	}
-
-	inline static boolean isDigitalReply (const byte *status) {
-		return (status[1] & 0xF0) == 0x40;
-	}
-
-	inline static boolean isConfigReply (const byte *status) {
-		return (status[1] & 0xF0) == 0xF0;
-	}
-
-	inline static boolean isNegconReply (const byte *status) {
-		return status[1] == 0x23;
-	}
-
-	inline static boolean isJogconReply (const byte *status) {
-		return (status[1] & 0xF0) == 0xE0;
-	}
-
-	inline static boolean isMultiTapReply (const byte *status) {
-		return (status[1] & 0xF0) == 0x80;
-	}
-
 public:
 	boolean enableMultiTap () {
 		/* This will enable the MultiTap, if present, but still return data as

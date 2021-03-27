@@ -45,35 +45,6 @@ protected:
 	PsxDriver *driver;
 
 	PsxControllerData controller;
-	
-	// Green Mode controllers
-	inline boolean isFlightstickReply (const byte *status) {
-		return (status[1] & 0xF0) == 0x50;
-	}
-
-	inline boolean isDualShockReply (const byte *status) {
-		return (status[1] & 0xF0) == 0x70;
-	}
-
-	inline boolean isDualShock2Reply (const byte *status) {
-		return status[1] == 0x79;
-	}
-
-	inline boolean isDigitalReply (const byte *status) {
-		return (status[1] & 0xF0) == 0x40;
-	}
-
-	inline boolean isConfigReply (const byte *status) {
-		return (status[1] & 0xF0) == 0xF0;
-	}
-
-	inline boolean isNegconReply (const byte *status) {
-		return status[1] == 0x23;
-	}
-
-	inline boolean isJogconReply (const byte *status) {
-		return (status[1] & 0xF0) == 0xE0;
-	}
 
 public:
 	/** \brief Initialize library

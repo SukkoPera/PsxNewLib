@@ -72,3 +72,71 @@ const byte poll[] = {0x01, 0x42, 0x00, 0xFF, 0xFF};
 const byte multipoll[] = {0x01, 0x42, 0x01, 0x00 /* Could be 42 */, 0x00};
 
 //! @}
+
+
+//! \name Controller Reply Validation
+//! @{
+
+/** \brief Check if a reply has the Digital format
+ *
+ * This is the earliest reply form, which includes data for 14 buttons.
+ */
+inline static boolean isDigitalReply (const byte *status) {
+	return (status[1] & 0xF0) == 0x40;
+}
+
+/** \brief Check if a reply has the Flightstick format
+ *
+ * This is also called "Green Mode" because the led on SCPH-1150/1180 turns
+ * green when it is enabled.
+ */
+inline static boolean isFlightstickReply (const byte *status) {
+	return (status[1] & 0xF0) == 0x50;
+}
+
+/** \brief Check if a reply has the DualShock format
+ *
+ * This means it includes data for the two Analog Sticks and L3/R3.
+ */
+inline static boolean isDualShockReply (const byte *status) {
+	return (status[1] & 0xF0) == 0x70;
+}
+
+/** \brief Check if a reply has the DualShock2 format
+ *
+ * This means it includes data for the two Analog Sticks, L3/R3 and analog
+ * pressure levels for (almost) all buttons.
+ */
+inline static boolean isDualShock2Reply (const byte *status) {
+	return status[1] == 0x79;
+}
+
+/** \brief Check if a reply has the Configuration Mode format
+ *
+ * This is only supported from DualShock onwards.
+ */
+inline static boolean isConfigReply (const byte *status) {
+	return (status[1] & 0xF0) == 0xF0;
+}
+
+/** \brief Check if a reply has the neGcon format
+ */
+inline static boolean isNegconReply (const byte *status) {
+	return status[1] == 0x23;
+}
+
+/** \brief Check if a reply has the JogCon format
+ */
+inline static boolean isJogconReply (const byte *status) {
+	return (status[1] & 0xF0) == 0xE0;
+}
+
+/** \brief Check if a reply has the MultiTap format
+ *
+ * This means it has DualShock-style data for 4 controllers (i.e.: 8 bytes per
+ * controller).
+ */
+inline static boolean isMultiTapReply (const byte *status) {
+	return (status[1] & 0xF0) == 0x80;
+}
+//! @}
