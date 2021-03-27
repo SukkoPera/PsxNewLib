@@ -344,11 +344,8 @@ void loop () {
 				boolean light = false;
 				for (byte ctrlId = 0; ctrlId < 4; ++ctrlId) {
 					PsxControllerData& cont = controllers[ctrlId];
-
-					if (cont.protocol != PSPROTO_UNKNOWN) {
-						dumpButtons (ctrlId, cont);
-						light = light || !!cont.getButtonWord ();
-					}
+					dumpButtons (ctrlId, cont);
+					light = light || !!cont.getButtonWord ();
 				}
 				
 				fastDigitalWrite (PIN_BUTTONPRESS, light);
