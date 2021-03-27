@@ -53,9 +53,17 @@ typedef const byte* PGM_BYTES_P;
 const byte PIN_PS2_ATT = 10;
 
 // These can be changed freely when using the bitbanged protocol
+#if defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328__) || \
+   defined (__AVR_ATmega168__) || defined (__AVR_ATtiny88__) || \
+   defined (__AVR_ATtiny48__)
 const byte PIN_PS2_CMD = 11;
 const byte PIN_PS2_DAT = 12;
 const byte PIN_PS2_CLK = 13;
+#elif defined (__AVR_ATmega32U4__)
+const byte PIN_PS2_CMD = 16;
+const byte PIN_PS2_DAT = 14;
+const byte PIN_PS2_CLK = 15;
+#endif
 
 const byte PIN_HAVEMULTITAP = 8;
 const byte PIN_HAVESINGLE = 7;
@@ -221,9 +229,9 @@ void dumpButtons (const byte ctrlId, PsxControllerData& cont) {
 }
 
 
-//~ PsxDriverHwSpi<PIN_PS2_ATT> psxDriver;
+PsxDriverHwSpi<PIN_PS2_ATT> psxDriver;
 //~ PsxDriverBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psxDriver;
-PsxDriverDioSoftSpi<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psxDriver;
+//~ PsxDriverDioSoftSpi<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psxDriver;
 PsxMultiController psx;
 
 enum ControllerType {
@@ -262,73 +270,77 @@ void loop () {
 	fastDigitalWrite (PIN_HAVESINGLE, controllerType == CONT_SINGLE ? HIGH : LOW);
 	
 	if (controllerType == CONT_NONE) {
-		// Check for MultiTap first
 		if (psx.begin (psxDriver)) {
-			Serial.println (F("Found MultiTap!"));
-			delay (300);
+			// OK, some controller is connected, see if it's a MultiTap
+			if (psx.enableMultiTap ()) {
+				Serial.println (F("Found MultiTap!"));
+				delay (300);
 
-			PsxControllerData cont;
-			for (byte i = 0; i < 4; ++i) {
-				cont.clear ();
-				if (psx.read (i, cont)) {
-					/* Single-controller read was fine, so controller must be
-					 * there, try to enable the analog sticks
-					 */
-					PGM_BYTES_P protoStr = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(controllerProtocolStrings[cont.protocol < PSPROTO_MAX ? cont.protocol : (int) PSPROTO_MAX])));
-					Serial.print (F("Found "));
-					Serial.print (PSTR_TO_F (protoStr));
-					Serial.print (F(" controller on port "));
-					Serial.println ((char) ('A' + i));
-					
-					if (!psx.enterConfigMode (i)) {
-						Serial.print (F("Cannot enter config mode on controller "));
+				// Go through each port and test if there's a controller there
+				PsxControllerData cont;
+				for (byte i = 0; i < 4; ++i) {
+					cont.clear ();
+					if (psx.read (i, cont)) {
+						/* Single-controller read was fine, so controller must be
+						 * there, try to enable the analog sticks
+						 */
+						PGM_BYTES_P protoStr = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(controllerProtocolStrings[cont.protocol < PSPROTO_MAX ? cont.protocol : (int) PSPROTO_MAX])));
+						Serial.print (F("Found "));
+						Serial.print (PSTR_TO_F (protoStr));
+						Serial.print (F(" controller on port "));
 						Serial.println ((char) ('A' + i));
-					} else {
-						if (!psx.enableAnalogSticks (i)) {
-							Serial.print (F("Cannot enable analog sticks on controller "));
+						
+						if (!psx.enterConfigMode (i)) {
+							Serial.print (F("Cannot enter config mode on controller "));
 							Serial.println ((char) ('A' + i));
+						} else {
+							if (!psx.enableAnalogSticks (i)) {
+								Serial.print (F("Cannot enable analog sticks on controller "));
+								Serial.println ((char) ('A' + i));
+							}
+							
+							if (!psx.exitConfigMode (i)) {
+								Serial.print (F("Cannot exit config mode on controller "));
+								Serial.println ((char) ('A' + i));
+							}
+						}
+					} else {
+						Serial.print (F("Controller "));
+						Serial.print ((char) ('A' + i));
+						Serial.println (F(" not present"));
+					}
+				}
+
+				// Entering config mode disables MultiTap functions, enable them again
+				if (!psx.enableMultiTap ()) {
+					Serial.println (F("Cannot re-enable MultiTap"));
+				} else {	
+					controllerType = CONT_MULTIPLE;
+				}
+			} else {
+				// Naaah, looks like it is a single controller
+				PsxControllerData controller;
+				if (psx.read (0, controller)) {
+					Serial.println (F("Found Single Controller!"));
+					delay (300);
+					if (!psx.enterConfigMode (0)) {
+						Serial.println (F("Cannot enter config mode"));
+					} else {
+						if (!psx.enableAnalogSticks (0)) {
+							Serial.println (F("Cannot enable analog sticks"));
 						}
 						
-						if (!psx.exitConfigMode (i)) {
-							Serial.print (F("Cannot exit config mode on controller "));
-							Serial.println ((char) ('A' + i));
+						//~ if (!psx.enableAnalogButtons (0)) {
+							//~ Serial.println (F("Cannot enable analog buttons"));
+						//~ }
+						
+						if (!psx.exitConfigMode (0)) {
+							Serial.println (F("Cannot exit config mode"));
 						}
 					}
-				} else {
-					Serial.print (F("Controller "));
-					Serial.print ((char) ('A' + i));
-					Serial.println (F(" not present"));
-				}
-			}
-
-			if (!psx.enableMultiTap ()) {
-				Serial.println (F("Cannot re-enable MultiTap"));
-			} else {	
-				controllerType = CONT_MULTIPLE;
-			}
-		} else {
-			// Check for single controller
-			PsxControllerData controller;
-			if (psx.read (0, controller)) {
-				Serial.println (F("Found Single Controller!"));
-				delay (300);
-				if (!psx.enterConfigMode (0)) {
-					Serial.println (F("Cannot enter config mode"));
-				} else {
-					if (!psx.enableAnalogSticks (0)) {
-						Serial.println (F("Cannot enable analog sticks"));
-					}
 					
-					//~ if (!psx.enableAnalogButtons (0)) {
-						//~ Serial.println (F("Cannot enable analog buttons"));
-					//~ }
-					
-					if (!psx.exitConfigMode (0)) {
-						Serial.println (F("Cannot exit config mode"));
-					}
+					controllerType = CONT_SINGLE;
 				}
-				
-				controllerType = CONT_SINGLE;
 			}
 		}
 	} else {

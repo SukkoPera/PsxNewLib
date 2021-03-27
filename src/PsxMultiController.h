@@ -84,11 +84,14 @@ public:
 	virtual boolean begin (PsxDriver& drv) {
 		driver = &drv;
 		
-		//~ for (byte i = 0; i < N_CONTROLLERS; ++i) {
-			//~ controllers[i].clear ();
-		//~ }
+		// Some disposable readings to let the controller know we are here
+		PsxControllerData cont;
+		for (byte i = 0; i < 5; ++i) {
+			read (0, cont);
+			delay (MIN_ATTN_INTERVAL);
+		}
 
-		return enableMultiTap ();
+		return read (0, cont);
 	}
 
 	//! \name Configuration Mode Functions
