@@ -49,6 +49,35 @@ const byte ATTN_DELAY = 15;
  */
 const byte MIN_ATTN_INTERVAL = 1000 / 60;
 
+/** \brief Command Inter-Byte Timeout (us)
+ * 
+ * Commands are several bytes long. After every byte, the controller is supposed
+ * to send an \a Acknowledge signal. This is the maximum time to wait for that
+ * signal.
+ * 
+ * NOTE: Not all drivers watch the \a Acknowledge line, some just wait a fixed
+ * amount of time.
+ *
+ * \sa INTER_CMD_BYTE_DELAY
+ */
+const byte INTER_CMD_BYTE_TIMEOUT = 100;
+
+/** \brief Command Inter-Byte Delay (us)
+ * 
+ * For drivers that do not watch the \a Acknowledge line, this is the time to
+ * wait between two consecutive bytes.
+ *
+ * \sa INTER_CMD_BYTE_TIMEOUT
+ */
+const byte INTER_CMD_BYTE_DELAY = 50;
+
+/** \brief Padding byte value
+ *
+ * The value sent to the controller when we must generate padding bytes. This is
+ * usually 0x5A or 0x00.
+ */
+const byte PADDING_BYTE = 0x5A;
+
 /** \brief Command timeout (ms)
  * 
  * Commands are sent to the controller repeatedly, until they succeed or time

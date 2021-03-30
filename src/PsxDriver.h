@@ -30,35 +30,8 @@
 
 #include "PsxOptions.h"
 
-
 // Uncomment this to have all byte exchanges logged to serial
 //~ #define DUMP_COMMS
-
-/** \brief Command Inter-Byte Delay (us)
- * 
- * Commands are several bytes long. This is the time to wait between two
- * consecutive bytes.
- * 
- * This should actually be done by watching the \a Acknowledge line, but we are
- * ignoring it at the moment.
- */
-const byte INTER_CMD_BYTE_DELAY = 50;
-
-//~ /** \brief Command timeout (ms)
- //~ * 
- //~ * Commands are sent to the controller repeatedly, until they succeed or time
- //~ * out. This is the length of that timeout.
- //~ * 
- //~ * \sa COMMAND_RETRY_INTERVAL
- //~ */
-//~ const unsigned long COMMAND_TIMEOUT = 250;
-
-//~ /** \brief Command Retry Interval (ms)
- //~ * 
- //~ * When sending a command to the controller, if it does not succeed, it is
- //~ * retried after this amount of time.
- //~ */
-//~ const unsigned long COMMAND_RETRY_INTERVAL = 10;
 
 
 /** \brief PSX Driver Interface
@@ -116,6 +89,16 @@ public:
 	 */
 	virtual void noAttention () = 0;
 
+	/** \brief Check if the acknowledge pulse was received
+	 *
+	 * This function must be implemented by derived classes and must return true
+	 * after the Acknowledge pulse has been received (i.e.: both the falling and
+	 * rising edges have been seen).
+	 *
+	 * This function MUST NOT block.
+	 */
+	virtual boolean acknowledged () = 0;
+
 	virtual void selectController () {
 		while (millis () - lastCmdTime <= MIN_ATTN_INTERVAL)
 			;
@@ -138,17 +121,27 @@ public:
 	 * controller and reads back an equally sized array of <i>data</i> bytes.
 	 * 
 	 * \param[in] out The command bytes to send the controller
+	 * \param[in] outLen Length of \a out, might be less than \a in, in which
+	 *                   case padding bytes are generated automatically
 	 * \param[out] in The data bytes returned by the controller, must be sized
 	 *                 to hold at least \a len bytes
 	 * \param[in] len The amount of bytes to be exchanged
+	 * \param[in] needLastAck true if the last byte send must be acknowledged
+	 *                        (i.e. if other bytes will follow)
+	 * \return true if the transmission took place correctly (i.e.: all bytes
+	 *         were acknowledged)
 	 */
-	void shiftInOut (const byte *out, byte *in, const byte len) {
+	boolean shiftInOut (const byte *out, const byte outLen,
+	                    byte *in,  const byte len,
+	                    const boolean needLastAck) {
+							
+		boolean ret = true;
 #ifdef DUMP_COMMS
 		byte inbuf[len];
 #endif
 
 		for (byte i = 0; i < len; ++i) {
-			byte tmp = shiftInOut (out != NULL ? out[i] : 0x00);
+			byte tmp = shiftInOut (out != NULL && i < outLen ? out[i] : PADDING_BYTE);
 #ifdef DUMP_COMMS
 			inbuf[i] = tmp;
 #endif
@@ -156,7 +149,14 @@ public:
 				in[i] = tmp;
 			}
 
-			delayMicroseconds (INTER_CMD_BYTE_DELAY);   // Very important!
+			if (i < len - 1 || needLastAck) {
+				unsigned long start = micros ();
+				while (!acknowledged () && micros () - start < INTER_CMD_BYTE_TIMEOUT)
+					;
+				if (!acknowledged ()) {
+					ret = false;
+				}
+			}
 		}
 
 #ifdef DUMP_COMMS
@@ -176,8 +176,14 @@ public:
 			Serial.print (inbuf[i], HEX);
 			Serial.print (' ');
 		}
-		Serial.println ();
+		if (!ret) {
+			Serial.println (F("!ACK"));
+		} else {
+			Serial.println ();
+		}
 #endif
+
+		return ret;
 	}
 
 	/** \brief Transfer several bytes to/from the controller
@@ -197,39 +203,35 @@ public:
 	 *         calculated with getReplyLength()
 	 */
 	byte *autoShift (const byte *out, const byte len) {
-		byte *ret = nullptr;
-
+		boolean txOk = false;
+		
 		if (len >= 3 && len <= BUFFER_SIZE) {
 			// All commands have at least 3 bytes, so shift out those first
-			shiftInOut (out, inputBuffer, 3);
-			if (isValidReply (inputBuffer)) {
-				// Reply is good, get full length
-				byte replyLen = getReplyLength (inputBuffer);
-
-				// Shift out rest of command
-				if (len > 3) {
-					shiftInOut (out + 3, inputBuffer + 3, len - 3);
-				}
-
-				byte left = replyLen - len + 3;
-				//~ Serial.print ("len = ");
-				//~ Serial.print (replyLen);
-				//~ Serial.print (", left = ");
-				//~ Serial.println (left);
-				if (left == 0) {
-					// The whole reply was gathered
-					ret = inputBuffer;
-				} else if (len + left <= BUFFER_SIZE) {
-					// Part of reply is still missing and we have space for it
-					shiftInOut (NULL, inputBuffer + len, left);
-					ret = inputBuffer;
+			txOk = shiftInOut (out, 3, inputBuffer, 3, len > 3);
+			if (txOk && isValidReply (inputBuffer)) {
+				/* Reply is good, calculate length. This won't include the 3
+				 * bytes we have already send, so it's basically the number of
+				 * bytes we still have to exchange.
+				 */
+				const byte replyLen = getReplyLength (inputBuffer);
+				if (replyLen > 0) {
+					// Shift out rest of command
+					if (replyLen <= BUFFER_SIZE - 3) {
+						// Part of reply is still missing and we have space for it
+						txOk = shiftInOut (out + 3, len - 3, inputBuffer + 3, replyLen, false);
+					} else {
+						// Reply incomplete but not enough space available
+						txOk = false;
+					}
 				} else {
-					// Reply incomplete but not enough space provided
+					// The whole reply was gathered, txOk is already true
 				}
+			} else {
+				txOk = false;
 			}
 		}
 
-		return ret;
+		return txOk ? inputBuffer : nullptr;
 	}
 
 	/** \brief Get reply length
