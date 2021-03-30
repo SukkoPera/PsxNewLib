@@ -30,6 +30,7 @@
 
 #include "PsxDriver.h"
 #include "PsxDriverHwSpi.h"
+#include "PsxDriverHwSpiWithAck.h"
 #include "PsxDriverBitBang.h"
 #include "PsxDriverDioSoftSpi.h"
 #include "PsxPublicTypes.h"
