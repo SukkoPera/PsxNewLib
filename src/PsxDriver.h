@@ -162,9 +162,11 @@ public:
 #ifdef DUMP_COMMS
 		Serial.print (F("<-- "));
 		for (byte i = 0; i < len; ++i) {
-			if (out && out[i] < 0x10)
+			if ((out != NULL && i < outLen && out[i] < 0x10) ||
+			    (!(out != NULL && i < outLen) && PADDING_BYTE < 0x10)) {
 				Serial.print (0);
-			Serial.print (out ? out[i]: 0x5A, HEX);
+			}
+			Serial.print (out != NULL && i < outLen ? out[i] : PADDING_BYTE, HEX);
 			Serial.print (' ');
 		}
 		Serial.println ();
