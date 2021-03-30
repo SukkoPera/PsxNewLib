@@ -48,12 +48,19 @@ protected:
 
 public:
 	boolean enableMultiTap () {
+		byte out[35] = {};
+		memcpy (out, multipoll, sizeof (multipoll));
+		out[3] = 0x42;
+		out[11] = 0x42;
+		out[19] = 0x42;
+		out[27] = 0x42;
+		
 		/* This will enable the MultiTap, if present, but still return data as
 		* a normal read. Actual MultiTap data will be returned <i>at the next
 		* read</i>.
 		*/
 		driver -> selectController ();
-		driver -> autoShift (multipoll, sizeof (multipoll));
+		driver -> autoShift (out, sizeof (out));
 		driver -> deselectController ();
 
 		// Do not rush :)
@@ -63,7 +70,7 @@ public:
 		* to return normal data again
 		*/
 		driver -> selectController ();
-		byte *in = driver -> autoShift (multipoll, sizeof (multipoll));
+		byte *in = driver -> autoShift (out, sizeof (out));
 		driver -> deselectController ();
 
 		return in != NULL && isMultiTapReply (in);
