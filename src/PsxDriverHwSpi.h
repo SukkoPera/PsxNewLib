@@ -30,9 +30,6 @@
 #include <SPI.h>
 #include <DigitalIO.h>
 
-// Set up the speed, data order and data mode
-static SPISettings spiSettings (250000, LSBFIRST, SPI_MODE3);
-
 
 template <uint8_t PIN_ATT>
 class PsxDriverHwSpi: public PsxDriver {
@@ -43,6 +40,9 @@ private:
 	DigitalPin<SCK> clk;
 
 	unsigned long byteFinishTime;
+
+	// Set up the speed, data order and data mode
+	static const SPISettings spiSettings;
 
 protected:
 	virtual byte shiftInOut (const byte out) override {
@@ -89,3 +89,7 @@ public:
 		return PsxDriver::begin ();
 	}
 };
+
+// Init static data members
+template <uint8_t PIN_ATT>
+const SPISettings PsxDriverHwSpi<PIN_ATT>::spiSettings (250000, LSBFIRST, SPI_MODE3);

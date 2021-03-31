@@ -30,9 +30,6 @@
 #include <SPI.h>
 #include <DigitalIO.h>
 
-// Set up the speed, data order and data mode
-static SPISettings spiSettings (250000, LSBFIRST, SPI_MODE3);
-
 // This needs to be here because it is accessed by the ISR
 static volatile byte ackReceived;
 
@@ -61,6 +58,9 @@ private:
 	byte pcicrBitMask;
 	volatile byte *pcintMaskReg;
 	byte pcintMaskValue;
+
+	// Set up the speed, data order and data mode
+	static const SPISettings spiSettings;
 
 protected:
 	virtual byte shiftInOut (const byte out) override {
@@ -119,6 +119,11 @@ public:
 		return PsxDriver::begin ();
 	}
 };
+
+// Init static data members
+template <uint8_t PIN_ATT, uint8_t PIN_ACK>
+const SPISettings PsxDriverHwSpiWithAck<PIN_ATT, PIN_ACK>::spiSettings (250000, LSBFIRST, SPI_MODE3);
+
 
 // This ISR approach was lifted from the Arduino SoftwareSerial library
 #if defined(PCINT0_vect)
