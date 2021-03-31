@@ -1,6 +1,10 @@
 # PsxNewLib - Playstation controller interface library for Arduino
 
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/SukkoPera/PsxNewLib)
+![GitHub Release Date](https://img.shields.io/github/release-date/SukkoPera/PsxNewLib?color=blue&label=last%20release)
+![GitHub commits since latest release (by date)](https://img.shields.io/github/commits-since/SukkoPera/PsxNewLib/latest?color=orange)
 [![arduino/arduino-lint-action](https://github.com/SukkoPera/PsxNewLib/actions/workflows/main.yml/badge.svg)](https://github.com/SukkoPera/PsxNewLib/actions/workflows/main.yml)
+[![Arduino_CI](https://github.com/SukkoPera/PsxNewLib/actions/workflows/arduino_ci.yml/badge.svg)](https://github.com/SukkoPera/PsxNewLib/actions/workflows/arduino_ci.yml)
 
 PsxNewLib is an Arduino library that allows interfacing controllers designed for the Sony PlayStation and PlayStation 2 with Arduino boards.
 
