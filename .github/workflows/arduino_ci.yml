@@ -10,3 +10,5 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: Arduino-CI/action@stable-1.x
+        env:
+          CUSTOM_INIT_SCRIPT: install_dependencies.sh
