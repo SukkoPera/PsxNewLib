@@ -155,8 +155,8 @@ static const byte exit_config[] = {0x01, 0x43, 0x00, 0x00, 0x5A, 0x5A, 0x5A, 0x5
  */
 static const byte type_read[] = {0x01, 0x45, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A};
 static const byte set_mode[] = {0x01, 0x44, 0x00, /* enabled */ 0x01, /* locked */ 0x03, 0x00, 0x00, 0x00, 0x00};
+static const byte enable_rumble[] = {0x01, 0x4D, 0x00, /* motor 1 on */ 0x00, /* motor 2 on*/ 0x01, 0xff, 0xff, 0xff, 0xff};
 static const byte set_pressures[] = {0x01, 0x4F, 0x00, 0xFF, 0xFF, 0x03, 0x00, 0x00, 0x00};
-//~ static byte enable_rumble[] = {0x01, 0x4D, 0x00, 0x00, 0x01};
 
 /** \brief Poll all buttons
  * 
@@ -332,6 +332,27 @@ protected:
 	 * True if the #analogButtonData were valid in last call to read()
 	 */
 	boolean analogButtonDataValid;
+	
+	/** \brief Rumble feature enabled or disabled.
+	 * 
+	 * True if rumble has been turned on with command 0x4d, false otherwise.
+	 *  Rumble must be enabled and 7.5v supplied to pin 3!
+	 */
+	boolean rumbleEnabled;
+	
+	/** \brief requested left motor (motor 1) power. 
+	 * 
+	 * 0xff for on, 0x00 for off, motor does not support partial activation.
+	 *  Rumble must be enabled and 7.5v supplied to pin 3!
+	 */
+	byte motor1Level;
+	
+	/** \brief requested right motor (motor 2) power. 
+	 * 
+	 * 0x00 to 0xFF -> 0 to 100% power.
+	 *  Rumble must be enabled and 7.5v supplied to pin 3!
+	 */
+	byte motor2Level;
 
 	/** \brief Assert the Attention line
 	 * 
@@ -531,6 +552,10 @@ public:
 		memset (analogButtonData, 0, sizeof (analogButtonData));
 
 		protocol = PSPROTO_UNKNOWN;
+		
+		rumbleEnabled = false;
+		motor1Level = 0x00;
+		motor2Level = 0x00;
 
 		// Some disposable readings to let the controller know we are here
 		for (byte i = 0; i < 5; ++i) {
@@ -631,6 +656,67 @@ public:
 		delay (MODE_SWITCH_DELAY);
 
 		return ret;
+	}
+
+	/** \brief Enable (or disable) the vibration capability of the DualShock / DualShock 2
+	 * 
+	 * This function enables or disables the rumble feature of the DualShock / DualShock 2 controllers.
+	 *  NOTE that this function does nothing on its own - the vibration on/off must be set using 
+	 *  setRumble() and the controller will begin to vibrate when the read() function is 
+	 *  next called.
+	 *
+	 * This function will only work if when the controller is in Configuration
+	 * Mode.
+	 * 
+	 * \param[in] enabled true to enable both motors, false to disable them.
+	 *
+	 * \return true if we got bytes back. Eventually we should wait for ACK from the controller.
+	 */
+	boolean enableRumble(bool enabled = true) {
+		boolean ret = true;
+		byte out[sizeof (enable_rumble)];
+
+		memcpy (out, enable_rumble, sizeof (enable_rumble));
+		out[3] = enabled ? 0x00 : 0xff;
+		out[4] = enabled ? 0x01 : 0xff;
+
+		unsigned long start = millis ();
+		byte cnt = 0;
+		do {
+			attention ();
+			byte *in = autoShift (out, 5);
+			noAttention ();
+
+			/* The real way to check if the command was successful is to wait for ACK. 
+			 *  Currently the library doesn't support the pin, so I will just assume success.
+			 */
+			if (in != nullptr) {
+				++cnt;
+			}
+			ret = cnt >= 3;
+
+			if (!ret) {
+				delay (COMMAND_RETRY_INTERVAL);
+			}
+		} while (!ret && millis () - start <= COMMAND_TIMEOUT);
+		delay (MODE_SWITCH_DELAY);
+		
+		rumbleEnabled = true;
+		return ret;
+	}
+
+	/** \brief Set the requested power output of the rumble motors on DualShock / DualShock 2 controllers.
+	 * 
+	 * This function sets internal variables that set the requested motor power of the rumble motors.
+	 *  NOTE this does nothing if rumble has not been enabled with enableRumble(), rumble motors will 
+	 *  activate or deactivate to match the arguments of this function with the next call to read()
+	 *
+	 * \param[in] enabled true to activate motor 1, false to deactivate.
+	 * \param[in] requested motor power of motor 2, where 0x00 to 0xFF corresponds to 0 to 100%.
+	 */
+	void setRumble(bool motor1Active = true, byte motor2Power = 0xff) {
+		motor1Level = motor1Active ? 0xff : 0x00;
+		motor2Level = motor2Power;
 	}
 
 	/** \brief Enable (or disable) analog buttons
@@ -783,7 +869,17 @@ public:
 		analogButtonDataValid = false;
 
 		attention ();
-		byte *in = autoShift (poll, 3);
+		byte *in = nullptr;
+		if(rumbleEnabled) {
+			byte out[sizeof (poll)];
+			memcpy(out, poll, sizeof(poll));
+			out[3] = motor1Level;
+			out[4] = motor2Level;
+			in = autoShift (out, sizeof(poll));
+		}
+		else {
+			in = autoShift (poll, 3);
+		}
 		noAttention ();
 
 		if (in != NULL) {
