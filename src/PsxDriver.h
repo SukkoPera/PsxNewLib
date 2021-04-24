@@ -61,6 +61,17 @@ protected:
 	 */
 	unsigned long lastCmdTime;
 
+	/** \brief Attention Interval
+	 *
+	 * The interval that must elapse between the end of a command and the
+	 * beginning of the following one (us).
+	 *
+	 * This can be decreased but might cause erratic readings or disconnects.
+	 *
+	 * \sa MIN_ATTN_INTERVAL
+	 */
+	byte attnInterval = MIN_ATTN_INTERVAL;
+
 	/** \brief Transfer a single byte to/from the controller
 	 * 
 	 * This function must be implemented by derived classes and must transfer
@@ -99,8 +110,29 @@ public:
 	 */
 	virtual boolean acknowledged () = 0;
 
+	/** \brief Set the Attention Interval
+	 *
+	 * By default the driver will take care of not sending commands to the
+	 * controller too often. If you have a somehow faster controller (?) or if
+	 * you want to take care of this yourself, feel free to decrease this.
+	 *
+	 * \sa getAttentionInterval
+	 * \sa MIN_ATTN_INTERVAL
+	 */
+	void setAttentionInterval (const byte us) {
+		attnInterval = us;
+	}
+
+	/** \brief Get the current Attention Interval
+	 *
+	 * \sa setAttentionInterval
+	 */
+	byte getAttentionInterval () const {
+		return attnInterval;
+	}
+
 	virtual void selectController () {
-		while (millis () - lastCmdTime <= MIN_ATTN_INTERVAL)
+		while (millis () - lastCmdTime <= attnInterval)
 			;
 
 		attention ();
