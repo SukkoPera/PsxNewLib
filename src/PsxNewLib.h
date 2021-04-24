@@ -40,7 +40,7 @@
  * This should actually be done by watching the \a Acknowledge line, but we are
  * ignoring it at the moment.
  */
-const byte INTER_CMD_BYTE_DELAY = 15;
+const byte INTER_CMD_BYTE_DELAY = 50;
 
 /** \brief Command timeout (ms)
  * 
