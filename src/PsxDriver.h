@@ -208,8 +208,18 @@ public:
 		boolean txOk = false;
 		
 		if (len >= 3 && len <= BUFFER_SIZE) {
-			// All commands have at least 3 bytes, so shift out those first
-			txOk = shiftInOut (out, 3, inputBuffer, 3, len > 3);
+			/* All commands have at least 3 bytes, so shift out those first
+			 *
+			 * Note that the whole concept of "autoshift" revolves around us
+			 * sending the smallest number of bytes for the command and then
+			 * receiving as many as the reply tells us. This means that strictly
+			 * speaking at this point we have no idea whether the command will
+			 * be longer than 3 bytes - which we need to know in order to wait
+			 * for the last ack or not - but I think we can safely assume so,
+			 * since there's no way the reply can say it's shorter than 2 bytes
+			 * (0 actually means 16!).
+			 */
+			txOk = shiftInOut (out, 3, inputBuffer, 3, true);
 			if (txOk && isValidReply (inputBuffer)) {
 				/* Reply is good, calculate length. This won't include the 3
 				 * bytes we have already send, so it's basically the number of
