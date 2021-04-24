@@ -53,6 +53,25 @@ const byte PIN_BUTTONPRESS = A0;
 
 const unsigned long POLLING_INTERVAL = 1000U / 50U;
 
+const word MAX_MOUSE_VALUE = 32767;
+
+/* Min and max possible values returned by the GunCon,
+ *
+ * From document at http://problemkaputt.de/psx-spx.htm#controllerslightgunsnamcoguncon
+ * - x is 77 to 461
+ * - y is 25 to 248 (ntsc) or 32 to 295 (pal)
+ *
+ * From personal testing on a Sony PVM:
+ * - x is 72 to 450, with underscan 71 to 453
+ * - y is 22 to 248, with underscan 13 to 254 (ntsc)
+ */
+const unsigned short int MIN_POSSIBLE_X = 77;
+const unsigned short int MAX_POSSIBLE_X = 461;
+const unsigned short int MIN_POSSIBLE_Y = 25;
+const unsigned short int MAX_POSSIBLE_Y = 295;
+
+const byte MAX_NOLIGHT_COUNT = 10;
+
 boolean haveController = false;
 
 // Minimum and maximum detected values. Varies from tv to tv.
@@ -67,18 +86,27 @@ word lastY = -1;
 
 boolean enableMouseMove = true;
 
+byte noLightCount = 0;
+
+
 // Translate guncon values to the mouse absolute values (zero to 32767).
 word convertRange (word gcMin, word gcMax, word value) {
-	word scale = (word) (32767) / (gcMax - gcMin);
-	return (word) ((value - gcMin) * scale);
+	word scale = MAX_MOUSE_VALUE / (gcMax - gcMin);
+	return (value - gcMin) * scale;
+}
+
+void releaseAllButtons () {
+	AbsMouse.release (MOUSE_LEFT);
+	AbsMouse.release (MOUSE_RIGHT);
+	AbsMouse.release (MOUSE_MIDDLE);
+	AbsMouse.report ();
 }
 
 void setup () {
-	// Init AbsMouse library
-	AbsMouse.init();
+	// Init AbsMouse library, disabling autoreports
+	AbsMouse.init (MAX_MOUSE_VALUE, MAX_MOUSE_VALUE, false);
 
 	Serial.begin (115200);
-
 	Serial.println (F("Ready!"));
 }
 
@@ -95,7 +123,14 @@ void loop () {
 				haveController = true;
 			}
 		} else {
-			if (!psx.read ()) {
+			/* It seems USB reports happen in the background and disturb the
+			 * polling process, so let's avoid that!
+			 */
+			noInterrupts ();
+			boolean isReadSuccess = psx.read ();
+			interrupts ();
+		
+			if (!isReadSuccess) {
 				Serial.print (F("Controller lost, last values: x = "));
 				Serial.print (lastX);
 				Serial.print (F(", y = "));
@@ -135,47 +170,73 @@ void loop () {
 				word x, y;
 				GunconStatus gcStatus = psx.getGunconCoordinates (x, y);
 				if (gcStatus == GUNCON_OK) {
-					lastX = x;
-					lastY = y;
+					noLightCount = 0;
+					if (x >= MIN_POSSIBLE_X && x <= MAX_POSSIBLE_X &&
+					    y >= MIN_POSSIBLE_Y && y <= MAX_POSSIBLE_Y) {
+							
+						lastX = x;
+						lastY = y;
 
-					// Sets min and max detected values if needed
-					if (x < minX && x > 70) {
-						minX = x;
-					} else if (x > maxX && x < 470) {
-						maxX = x;
+						// Sets min and max detected values if needed
+						if (x < minX) {
+							minX = x;
+						} else if (x > maxX) {
+							maxX = x;
+						}
+							
+						if (y < minY) {
+							minY = y;
+						} else if (y > maxY) {
+							maxY = y;
+						}
+
+						Serial.print (F(" analog: x = "));
+						Serial.print (x);
+						Serial.print (F(", y = "));
+						Serial.print (y);
+		
+						Serial.print (F(" MIN: x = "));
+						Serial.print (minX);
+						Serial.print (F(", y = "));
+						Serial.print (minY);
+		
+						Serial.print (F(" MAX: x = "));
+						Serial.print (maxX);
+						Serial.print (F(", y = "));
+						Serial.println (maxY);
+
+						if (enableMouseMove) {
+							AbsMouse.move (convertRange (minX, maxX, x),
+										   convertRange (minY, maxY, y));
+						}
 					}
+				} else if (gcStatus == GUNCON_NO_LIGHT){
+					// Up to 10 no_light reads will report the last good values
+					if (lastX != 0 && lastY != 0) {
+						AbsMouse.move (convertRange (minX, maxX, lastX),
+									   convertRange (minY, maxY, lastY));
 						
-					if (y < minY && y > 20) {
-						minY = y;
-					} else if (y > maxY && y < 300) {
-						maxY = y;
-					}
+						if (++noLightCount > MAX_NOLIGHT_COUNT) {
+							noLightCount = 0;
+							lastX = 0;
+							lastY = 0;
 
-					Serial.print (F(" analog: x = "));
-					Serial.print (x);
-					Serial.print (F(", y = "));
-					Serial.print (y);
-	
-					Serial.print (F(" MIN: x = "));
-					Serial.print (minX);
-					Serial.print (F(", y = "));
-					Serial.print (minY);
-	
-					Serial.print (F(" MAX: x = "));
-					Serial.print (maxX);
-					Serial.print (F(", y = "));
-					Serial.println (maxY);
-
-					if (enableMouseMove) {
-						AbsMouse.move (convertRange (minX, maxX, x),
-						               convertRange (minY, maxY, y));
+							// Set it offscreen (bottom left). need to test
+							// Also release all buttons
+							AbsMouse.move (0, MAX_MOUSE_VALUE);
+							releaseAllButtons ();
+						}
+					} else if (psx.buttonPressed (PSB_CIRCLE) &&
+					           psx.buttonPressed (PSB_START) &&
+					           psx.buttonPressed (PSB_CROSS)) {
+								   
+						enableMouseMove = false;
+						releaseAllButtons ();
 					}
-				} else if (gcStatus == GUNCON_UNEXPECTED_LIGHT) {
-					Serial.println (F("STATUS: GUNCON_UNEXPECTED_LIGHT!"));
-				} else if (gcStatus == GUNCON_NO_LIGHT) {
-					Serial.println (F("STATUS: GUNCON_NO_LIGHT!"));
-				} else {
-					Serial.println (F("STATUS: GUNCON_OTHER_ERROR!"));
+				}
+
+				if (enableMouseMove) {
+					AbsMouse.report ();
 				}
 			}
 		}
