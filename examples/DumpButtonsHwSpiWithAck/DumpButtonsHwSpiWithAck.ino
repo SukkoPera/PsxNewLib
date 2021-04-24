@@ -174,7 +174,7 @@ const char* const controllerTypeStrings[PSCTRL_MAX + 1] PROGMEM = {
 
 
 
-PsxDriverHwSpi<PIN_PS2_ATT, PIN_PS2_ACK> psxDriver;
+PsxDriverHwSpiWithAck<PIN_PS2_ATT, PIN_PS2_ACK> psxDriver;
 PsxSingleController psx;
 
 boolean haveController = false;
