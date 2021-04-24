@@ -91,13 +91,7 @@ public:
 	virtual boolean begin (PsxDriver& drv) {
 		driver = &drv;
 		
-		// Some disposable readings to let the controller know we are here
 		PsxControllerData cont;
-		for (byte i = 0; i < 5; ++i) {
-			read (0, cont);
-			delay (MIN_ATTN_INTERVAL);
-		}
-
 		return read (0, cont);
 	}
 
