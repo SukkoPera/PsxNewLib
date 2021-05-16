@@ -46,23 +46,26 @@ PsxNewLib aims to be compatible with all devices. I expect this to be the case w
 
 The following table contains the results of my tests, all done at 3.3V voltage level through my OpenPSX2AmigaPadAdapter:
 
-|Manufacturer|Model                                          |Supported              |Notes                                                                                                                                  |
-|------------|-----------------------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------|
-|Sony        |PlayStation Controller (SCPH-1010)             |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
-|Sony        |Revised PlayStation Controller (SCPH-1080)     |![Yes](img/yes.png)    |                                                                                                                                       |
-|Sony        |Analog Joystick (SCPH-1110)                    |![Yes](img/yes.png)    |Informally known as the *Flightstick*                                                                                                  |
-|Sony        |Dual Analog Controller (Japan, SCPH-1150)      |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
-|Sony        |Dual Analog Controller (USA, SCPH-1180)        |![Maybe](img/maybe.png)|Not tested yet but likely to work, as *SCPH-1180e* does                                                                                |
-|Sony        |Dual Analog Controller (Europe, SCPH-1180e)    |![Yes](img/yes.png)    |Controller actually only has *SCPH-1180* on it, but I'm assuming it's the European version since it was bought in Italy                |
-|Sony        |DualShock Analog Controller (SCPH-1200)        |![Yes](img/yes.png)    |                                                                                                                                       |
-|Sony        |DualShock 2 Analog Controller (SCPH-10010)     |![Yes](img/yes.png)    |                                                                                                                                       |
-|Sony        |DualShock Controller for PSOne (SCPH-110)      |![Yes](img/yes.png)    |                                                                                                                                       |
-|Asciiware   |Arcade Stick (SCEH-0002)                       |![Yes](img/yes.png)    |                                                                                                                                       |
-|Namco       |Arcade Stick (NPC-102 (SLEH-0004))             |![Yes](img/yes.png)    |                                                                                                                                       |
-|Logitech    |Cordless Action (G-X2D11)                      |![Yes](img/yes.png)    |                                                                                                                                       |
-|Namco       |neGcon (NPC-101)                               |![Yes](img/yes.png)    |Since v0.3                                                                                                                             |
-|Namco       |JogCon (NPC-105)                               |![Yes](img/yes.png)    |Since v0.3                                                                                                                             |
-|EastVita    |Wireless Controller                            |![Yes](img/yes.png)    |Chinese knock-off, cheap but with surprising quality, pretty similar to the Lynxmotion controller, probably goes under other names, too|
+|Manufacturer|Model                                             |Supported              |Notes                                                                                                                                  |
+|------------|--------------------------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+|Sony        |PlayStation Controller (SCPH-1010)                |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
+|Sony        |Revised PlayStation Controller (SCPH-1080)        |![Yes](img/yes.png)    |                                                                                                                                       |
+|Sony        |Analog Joystick (SCPH-1110)                       |![Yes](img/yes.png)    |Informally known as the *Flightstick*                                                                                                  |
+|Sony        |Dual Analog Controller (Japan, SCPH-1150)         |![Maybe](img/maybe.png)|Not tested yet                                                                                                                         |
+|Sony        |Dual Analog Controller (USA, SCPH-1180)           |![Maybe](img/maybe.png)|Not tested yet but likely to work, as *SCPH-1180e* does                                                                                |
+|Sony        |Dual Analog Controller (Europe, SCPH-1180e)       |![Yes](img/yes.png)    |Controller actually only has *SCPH-1180* on it, but I'm assuming it's the European version since it was bought in Italy                |
+|Sony        |DualShock Analog Controller (SCPH-1200)           |![Yes](img/yes.png)    |                                                                                                                                       |
+|Sony        |DualShock 2 Analog Controller (SCPH-10010)        |![Yes](img/yes.png)    |                                                                                                                                       |
+|Sony        |DualShock Controller for PSOne (SCPH-110)         |![Yes](img/yes.png)    |                                                                                                                                       |
+|Asciiware   |Arcade Stick (SCEH-0002)                          |![Yes](img/yes.png)    |                                                                                                                                       |
+|Logitech    |Cordless Action (G-X2D11)                         |![Yes](img/yes.png)    |                                                                                                                                       |
+|Namco       |Arcade Stick (NPC-102 (SLEH-0004))                |![Yes](img/yes.png)    |                                                                                                                                       |
+|Namco       |neGcon (NPC-101)                                  |![Yes](img/yes.png)    |Since v0.3                                                                                                                             |
+|Namco       |JogCon (NPC-105)                                  |![Yes](img/yes.png)    |Since v0.3                                                                                                                             |
+|Namco       |G-Con/GunCon                                      |![Yes](img/yes.png)    |Since v0.4, see the *GunconAbsMouse* example for details - Tested by @sonik-br                                                         |
+|Taito       |Densha de Go! Two-Handle Controller (SLPH-00051)  |![Yes](img/yes.png)    |Tested by @tylau0                                                                                                                      |
+|Taito       |Densha de Go! One-Handle Controller (TCPP-20001)  |![Yes](img/yes.png)    |Since v0.4 - Tested by @tylau0                                                                                                         |
+|EastVita    |Wireless Controller                               |![Yes](img/yes.png)    |Chinese knock-off, cheap but with surprising quality, pretty similar to the Lynxmotion controller, probably goes under other names, too|
 
 ## Debugging
 If you have problems, uncomment the `DUMP_COMMS` #define in [PsxNewLib.h](https://github.com/SukkoPera/PsxNewLib/blob/master/src/PsxNewLib.h#L33) and watch your serial monitor.
