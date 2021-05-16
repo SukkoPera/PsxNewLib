@@ -6,7 +6,7 @@
  * Time between attention being issued to the controller and the first clock
  * edge (us).
  */
-const byte ATTN_DELAY = 15;
+const byte ATTN_DELAY = 50;
 
 /** \brief Clock Period
  *

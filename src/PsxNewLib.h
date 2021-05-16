@@ -40,7 +40,7 @@
  * This should actually be done by watching the \a Acknowledge line, but we are
  * ignoring it at the moment.
  */
-const byte INTER_CMD_BYTE_DELAY = 15;
+const byte INTER_CMD_BYTE_DELAY = 50;
 
 /** \brief Command timeout (ms)
  * 
@@ -201,7 +201,8 @@ enum PsxControllerProtocol {
 	PSPROTO_DUALSHOCK2,			//!< DualShock 2 (has analog axes and buttons)
 	PSPROTO_FLIGHTSTICK,		//!< Green-mode (like DualShock but missing SELECT, L3 and R3)
 	PSPROTO_NEGCON,				//!< Namco neGcon (has 1 analog X axis and analog Square, Circle and L1 buttons)
-	PSPROTO_JOGCON				//!< Namco Jogcon (Wheel is mapped to analog X axis, half a rotation in each direction)
+	PSPROTO_JOGCON,				//!< Namco Jogcon (Wheel is mapped to analog X axis, half a rotation in each direction)
+	PSPROTO_GUNCON
 };
 
 /** \brief Number of different protocols supported
@@ -269,6 +270,28 @@ const byte NEGCON_I_II_BUTTON_THRESHOLD = 128U;
  * \sa NEGCON_I_II_BUTTON_THRESHOLD
  */
 const byte NEGCON_L_BUTTON_THRESHOLD = 240U;
+
+//! \brief Guncon read status
+enum GunconStatus {
+	//! Guncon data is valid
+	GUNCON_OK,
+
+	/** "Unexpected light": sensed light during VSYNC (e.g. from a Bulb or
+	 * Sunlight)
+	 */
+	GUNCON_UNEXPECTED_LIGHT,
+
+	/** "No light", this can mean either no light sensed at all (not aimed at
+	 * screen, or screen too dark: ERROR) or no light sensed yet (when trying to
+	 * read during rendering: BUSY)
+	 */
+	GUNCON_NO_LIGHT,
+
+	/** Data is not valid for some other reason (i.e.: no Guncon, read failed,
+	 * etc...)
+	 */
+	GUNCON_OTHER_ERROR
+};
 
 /** \brief PSX Controller Interface
  * 
@@ -506,6 +529,11 @@ protected:
 	inline boolean isJogconReply (const byte *status) {
 		return (status[1] & 0xF0) == 0xE0;
 	}
+
+	inline boolean isGunconReply (const byte *status) {
+		return status[1] == 0x63;
+	}
+	
 
 public:
 	/** \brief Initialize library
@@ -806,6 +834,8 @@ public:
 					protocol = PSPROTO_NEGCON;
 				} else if (isJogconReply (in)) {
 					protocol = PSPROTO_JOGCON;
+				} else if (isGunconReply (in)) {
+					protocol = PSPROTO_GUNCON;
 				} else {
 					protocol = PSPROTO_DIGITAL;
 				}
@@ -821,6 +851,17 @@ public:
 						 * avoids GCC warning
 						 */
 						/* FALLTHRU */
+					case PSPROTO_GUNCON:
+						/* The Guncon uses the same reply format as DualShocks,
+						 * by just falling through we'll end up with:
+						 * - A (Left side) -> Start
+						 * - B (Right side) -> Cross
+						 * - Trigger -> Circle
+						 * - Low byte of HSYNC -> RX
+						 * - High byte of HSYNC -> RY
+						 * - Low byte of VSYNC -> LX
+						 * - High byte of VSYNC -> LY
+						 */
 					case PSPROTO_DUALSHOCK:
 					case PSPROTO_FLIGHTSTICK:
 						// We have analog stick data
@@ -1051,6 +1092,46 @@ public:
 		y = ry;
 
 		return analogSticksValid;
+	}
+
+	/** \brief Retrieve Guncon X/Y readings
+	 *
+	 * According to the Nocash PSX Specifications, the Guncon returns 16-bit X/Y
+	 * coordinates of the screen it is aimed at.
+	 *
+	 * The coordinates are updated in all frames. The absolute min/max may vary
+	 * from TV set to TV set.
+	 *
+	 * Vertical coordinates are counted in scanlines (ie. equal to pixels).
+	 * Horizontal coordinates are counted in 8MHz units (which would equal a
+	 * resolution of 385 pixels; which can be, for example, converted to 320
+	 * pixel resolution as X=X*320/385).
+	 *
+	 * <em>Caution:</em> The gun only returns meaningful data when read shortly
+	 * after begin of VBLANK (ie. AFTER rendering, but still BEFORE vsync), so
+	 * make sure to only consider readings returning \a GUNCON_OK;
+	 *
+	 * \sa GunconStatus
+	 */
+	GunconStatus getGunconCoordinates (word& x, word& y) const {
+		GunconStatus status = GUNCON_OTHER_ERROR;
+
+		if (protocol == PSPROTO_GUNCON && analogSticksValid) {
+			status = GUNCON_OK;
+			
+			x = (((word) ry) << 8) | rx;
+			y = (((word) ly) << 8) | lx;
+
+			if (x == 0x0001) {
+				if (y == 0x0005) {
+					status = GUNCON_UNEXPECTED_LIGHT;
+				} else if (y == 0x000A) {
+					status = GUNCON_NO_LIGHT;
+				}
+			}
+		}
+
+		return status;
 	}
 	
 	//! @}		// Polling Functions

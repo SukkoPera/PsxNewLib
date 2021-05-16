@@ -7,7 +7,7 @@
  * Time between attention being issued to the controller and the first clock
  * edge (us).
  */
-const byte ATTN_DELAY = 15;
+const byte ATTN_DELAY = 50;
 
 // Set up the speed, data order and data mode
 static SPISettings spiSettings (250000, LSBFIRST, SPI_MODE3);
