@@ -19,7 +19,9 @@ In order to take of these issues, I started working on a new library, and so Psx
 ## Features
 Currently, PsxNewLib provides access to the status of all digital buttons, analog sticks (on DualShock and later controllers) and analog buttons (on DualShock 2 and later controllers). It also provides functions to enable and disable the analog sticks and buttons.
 
-It does NOT allow driving the vibration motors available on DualShock and later controllers. I'm not interested in this feature, but if you are, please open an Issue saying so. If many people ask, I will look into it.
+Since v0.4, it also allows driving the vibration motors available on DualShock and later controllers.
+
+It is compatible with a large number of different controller models, including the GunCon/G-Con light gun by Namco. Please [see below](#compatibility-list) for a list of which have been tested so far.
 
 ## Using the Library
 First of all, please note that this library depends on [greiman's DigitalIO library](https://github.com/greiman/DigitalIO), which you need to install as well. Unfortunately, the version that is available in the Library Manager has [a bug](https://github.com/greiman/DigitalIO/compare/1.0.0...master) that might cause an error during compilation. Because of this, I recommend not to install it through the Library Manager, but rather to get the master version and install it manually. You can also do that with [my fork](https://github.com/SukkoPera/DigitalIO), which supports a few more platforms.
@@ -83,4 +85,7 @@ PsxNewLib is provided to you ‘as is’ and without any express or implied warr
 ## Thanks
 - Bill Porter for the original library.
 - CuriousInventor for their [excellent interfacing guide](https://store.curiousinventor.com/guides/PS2).
+- Matheus Fraguas (@sonik-br) for helping getting the G-Con/GunCon supported.
+- Eddie Lau (@tylau0) for helping with the Densh de Go! controllers.
+- Kate (@katemonster33) for contributing Rumble support.
 - All the other guys who helped understand how the PSX controller protocol works.
