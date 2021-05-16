@@ -86,6 +86,6 @@ PsxNewLib is provided to you ‘as is’ and without any express or implied warr
 - Bill Porter for the original library.
 - CuriousInventor for their [excellent interfacing guide](https://store.curiousinventor.com/guides/PS2).
 - Matheus Fraguas (@sonik-br) for helping getting the G-Con/GunCon supported.
-- Eddie Lau (@tylau0) for helping with the Densh de Go! controllers.
+- Eddie Lau (@tylau0) for helping with the *Densha de Go!* controllers.
 - Kate (@katemonster33) for contributing Rumble support.
 - All the other guys who helped understand how the PSX controller protocol works.
