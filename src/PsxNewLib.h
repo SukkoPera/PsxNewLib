@@ -293,6 +293,8 @@ enum GunconStatus {
 	GUNCON_OTHER_ERROR
 };
 
+EMPTY_INTERRUPT (psxAcknowledgeEmptyISR);
+
 /** \brief PSX Controller Interface
  * 
  * This is the base class implementing interactions with PSX controllers. It is
@@ -306,6 +308,13 @@ protected:
 	 * 01 42 when in DualShock 2 mode), but we're better safe than sorry.
 	 */
 	static const byte BUFFER_SIZE = 32;
+
+	/** \brief Acknowledge interrupt bitmask
+	 *
+	 * Bitmask for the acknowledge pin's interrupt in EIFR.
+	 * If we didn't acquire an interrupt, the mask is zero.
+	 */
+	uint8_t ackBitmask;
 
 	/** \brief Internal communication buffer
 	 * 
@@ -413,13 +422,37 @@ protected:
 	 * \param[out] in The data bytes returned by the controller, must be sized
 	 *                 to hold at least \a len bytes
 	 * \param[in] len The amount of bytes to be exchanged
+	 * \param[in] waitForAck Whether we should wait for an acknowledgement before
+	 *                       transferring the first byte
 	 */
-	void shiftInOut (const byte *out, byte *in, const byte len) {
+	void shiftInOut (const byte *out, byte *in, const byte len, bool waitForAck) {
 #ifdef DUMP_COMMS
 		byte inbuf[len];
 #endif
 
 		for (byte i = 0; i < len; ++i) {
+			if (ackBitmask) {
+				if (waitForAck) {
+					// Wait for acknowledge interrupt flag to be set.
+					unsigned long start = micros ();
+					while (!(EIFR & ackBitmask)) {
+						if (micros () - start >= INTER_CMD_BYTE_DELAY * 2) {
+							// Timeout: probably no controller present.
+							break;
+						}
+					}
+				}
+				// Reset acknowledge flag.
+				EIFR = ackBitmask;
+			} else {
+				if (waitForAck) {
+					// Wait for a fixed amount of time such that the controller is
+					// ready for the next byte.
+					delayMicroseconds (INTER_CMD_BYTE_DELAY);
+				}
+			}
+			waitForAck = true;
+
 			byte tmp = shiftInOut (out != NULL ? out[i] : 0x5A);
 #ifdef DUMP_COMMS
 			inbuf[i] = tmp;
@@ -427,8 +460,6 @@ protected:
 			if (in != NULL) {
 				in[i] = tmp;
 			}
-
-			delayMicroseconds (INTER_CMD_BYTE_DELAY);   // Very important!
 		}
 
 #ifdef DUMP_COMMS
@@ -473,14 +504,14 @@ protected:
 
 		if (len >= 3 && len <= BUFFER_SIZE) {
 			// All commands have at least 3 bytes, so shift out those first
-			shiftInOut (out, inputBuffer, 3);
+			shiftInOut (out, inputBuffer, 3, false);
 			if (isValidReply (inputBuffer)) {
 				// Reply is good, get full length
 				byte replyLen = getReplyLength (inputBuffer);
 
 				// Shift out rest of command
 				if (len > 3) {
-					shiftInOut (out + 3, inputBuffer + 3, len - 3);
+					shiftInOut (out + 3, inputBuffer + 3, len - 3, true);
 				}
 
 				byte left = replyLen - len + 3;
@@ -493,7 +524,7 @@ protected:
 					ret = inputBuffer;
 				} else if (len + left <= BUFFER_SIZE) {
 					// Part of reply is still missing and we have space for it
-					shiftInOut (NULL, inputBuffer + len, left);
+					shiftInOut (NULL, inputBuffer + len, left, true);
 					ret = inputBuffer;
 				} else {
 					// Reply incomplete but not enough space provided
@@ -557,6 +588,32 @@ protected:
 	
 
 public:
+	/**
+	 * \param[in] ackPin Pin number of the acknowledge pin (optional).
+	 *                   If this pin can generate a hardware interrupt, its interrupt
+	 *                   flag is used to listen for the controller acknowledging that
+	 *                   it is ready to receive the next byte.
+	 *                   If such a pin is not available, we wait a fixed amount of time
+	 *                   and assume the controller is ready by then.
+	 */
+	PsxController (uint8_t ackPin = NOT_A_PIN) {
+		ackBitmask = 0x00;
+		if (ackPin != NOT_A_PIN) {
+			fastPinConfig (ackPin, INPUT, HIGH);
+			uint8_t interruptNum = digitalPinToInterrupt (ackPin);
+			if (interruptNum != NOT_AN_INTERRUPT) {
+				// We only care about the interrupt flag in EIFR, not about actually
+				// handling the interrupt. Therefore we attach an empty ISR and revert
+				// the interrupt mask after attaching it.
+				uint8_t orgMask = EIMSK;
+				attachInterrupt (interruptNum, psxAcknowledgeEmptyISR, RISING);
+				// Assume EIMSK and EIFR use the same bit fields.
+				ackBitmask = EIMSK & ~orgMask;
+				EIMSK = orgMask;
+			}
+		}
+	}
+
 	/** \brief Initialize library
 	 * 
 	 * This function shall be called before any others, it will initialize the

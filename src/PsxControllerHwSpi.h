@@ -46,6 +46,8 @@ protected:
 	}
 
 public:
+	PsxControllerHwSpi (uint8_t ackPin = NOT_A_PIN) : PsxController(ackPin) {}
+
 	virtual boolean begin () override {
 		att.config (OUTPUT, HIGH);    // HIGH -> Controller not selected
 
