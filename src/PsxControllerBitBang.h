@@ -78,8 +78,6 @@ protected:
 	}
 
 public:
-	PsxControllerBitBang (uint8_t ackPin = NOT_A_PIN) : PsxController(ackPin) {}
-
 	virtual boolean begin () override {
 		att.config (OUTPUT, HIGH);    // HIGH -> Controller not selected
 		cmd.config (OUTPUT, HIGH);
@@ -87,5 +85,21 @@ public:
 		dat.config (INPUT, HIGH);     // Enable pull-up
 
 		return PsxController::begin ();
+	}
+};
+
+template <uint8_t PIN_ATT, uint8_t PIN_CMD, uint8_t PIN_DAT, uint8_t PIN_CLK,
+          uint8_t PIN_ACK>
+class PsxControllerBitBangWithAck:
+		public PsxControllerBitBang<PIN_ATT, PIN_CMD, PIN_DAT, PIN_CLK> {
+private:
+	DigitalPin<PIN_ACK> ack;
+
+public:
+	virtual boolean begin () override {
+		ack.config (INPUT, HIGH);     // Enable pull-up
+		initAckPin (PIN_ACK);
+
+		return PsxControllerBitBang<PIN_ATT, PIN_CMD, PIN_DAT, PIN_CLK>::begin ();
 	}
 };

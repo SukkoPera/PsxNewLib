@@ -314,7 +314,7 @@ protected:
 	 * Bitmask for the acknowledge pin's interrupt in EIFR.
 	 * If we didn't acquire an interrupt, the mask is zero.
 	 */
-	uint8_t ackBitmask;
+	uint8_t ackBitmask = 0x00;
 
 	/** \brief Internal communication buffer
 	 * 
@@ -412,6 +412,32 @@ protected:
 	 * \return The data byte returned by the controller
 	 */
 	virtual byte shiftInOut (const byte out) = 0;
+
+	/** \brief Initialize support for the acknowledge pin
+	 *
+	 * If the acknowledge pin can generate a hardware interrupt, its interrupt
+	 * flag is used to listen for the controller acknowledging that it is ready
+	 * to receive the next byte.
+	 *
+	 * If this method is not called or the given pin cannot generate a hardware
+	 * interrupt, we will wait a fixed amount of time and assume the controller
+	 * is ready by then.
+	 *
+	 * \param[in] ackPin Pin number of the acknowledge pin
+	 */
+	void initAckPin (uint8_t ackPin) {
+		uint8_t interruptNum = digitalPinToInterrupt (ackPin);
+		if (interruptNum != NOT_AN_INTERRUPT) {
+			// We only care about the interrupt flag in EIFR, not about actually
+			// handling the interrupt. Therefore we attach an empty ISR and revert
+			// the interrupt mask after attaching it.
+			uint8_t orgMask = EIMSK;
+			attachInterrupt (interruptNum, psxAcknowledgeEmptyISR, RISING);
+			// Assume EIMSK and EIFR use the same bit fields.
+			ackBitmask = EIMSK & ~orgMask;
+			EIMSK = orgMask;
+		}
+	}
 
 	/** \brief Transfer several bytes to/from the controller
 	 * 
@@ -588,32 +614,6 @@ protected:
 	
 
 public:
-	/**
-	 * \param[in] ackPin Pin number of the acknowledge pin (optional).
-	 *                   If this pin can generate a hardware interrupt, its interrupt
-	 *                   flag is used to listen for the controller acknowledging that
-	 *                   it is ready to receive the next byte.
-	 *                   If such a pin is not available, we wait a fixed amount of time
-	 *                   and assume the controller is ready by then.
-	 */
-	PsxController (uint8_t ackPin = NOT_A_PIN) {
-		ackBitmask = 0x00;
-		if (ackPin != NOT_A_PIN) {
-			fastPinConfig (ackPin, INPUT, HIGH);
-			uint8_t interruptNum = digitalPinToInterrupt (ackPin);
-			if (interruptNum != NOT_AN_INTERRUPT) {
-				// We only care about the interrupt flag in EIFR, not about actually
-				// handling the interrupt. Therefore we attach an empty ISR and revert
-				// the interrupt mask after attaching it.
-				uint8_t orgMask = EIMSK;
-				attachInterrupt (interruptNum, psxAcknowledgeEmptyISR, RISING);
-				// Assume EIMSK and EIFR use the same bit fields.
-				ackBitmask = EIMSK & ~orgMask;
-				EIMSK = orgMask;
-			}
-		}
-	}
-
 	/** \brief Initialize library
 	 * 
 	 * This function shall be called before any others, it will initialize the
