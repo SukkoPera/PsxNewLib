@@ -68,7 +68,7 @@ I recommend using 3.3V power and signal levels. While everything will appear to 
 ### Data
 If you power the controller at 3.3V, all the I/O lines must also work at that voltage. Most Arduinos work at 5V, thus some level adjustement MUST be done. There are a few ways to achieve this, the easiest of which is probably using those bidirectional 4-channel level shifters you can get cheaply from China. You don't need bidirectionality, strictly speaking, still they are (almost) ideal for this application since they also provide pull-ups for the open-collector outputs and come in sets of 4.
 
-The only issue is that these adapters generally come with 10k pull-up resistors, which are too weak and will create compatibility issues with some controllers. Therefore, **you MUST replace them with 1k ones** or put 1k in parallel to each..
+The only issue is that these adapters generally come with 10k pull-up resistors, which are too weak and will create compatibility issues with some controllers. Therefore, **you MUST replace them with 1k ones** or put 1k in parallel to each.
 
 Of course, if you use an Arduino board that works at 3.3V, you won't need any level shifting but **you will still need the pull-up resistors**, as the built-in ones are too weak.
 
