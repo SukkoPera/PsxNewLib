@@ -1,4 +1,4 @@
-# PsxNewLib - Playstation controller interface library for Arduino
+# PsxNewLib - PlayStation Controller Interface Library for Arduino
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/SukkoPera/PsxNewLib)
 ![GitHub Release Date](https://img.shields.io/github/release-date/SukkoPera/PsxNewLib?color=blue&label=last%20release)
@@ -33,15 +33,53 @@ The API has a few rough edges and is not guaranteed to be stable, but any change
 Among the examples, there is one which will turn any PlayStation controller into a USB one simply by using an Arduino Leonardo or Micro. It is an excellent way to make a cheap adapter and to test the controller and library.
 
 ## Wiring the Controller
-Follow the pinout in the following picture from the [amazing CuriousInventor PS2 Interface Guide](https://store.curiousinventor.com/guides/PS2):
+As the following picture from the [amazing CuriousInventor PS2 Interface Guide](https://store.curiousinventor.com/guides/PS2) shows, PlayStation controllers use 9 pins:
 
 ![PS2 Controller Pinout](https://store.curiousinventor.com/wp-content/uploads/2019/09/wiring.jpg)
 
+| Pin # | Signal      | Direction                 | Notes          |
+|-------|-------------|---------------------------|----------------|
+| 1     | Data        | Controller -> PlayStation | Open Collector |
+| 2     | Command     | PlayStation -> Controller |                |
+| 3     | Motor Power |                           | 7.5V           |
+| 4     | Ground      |                           |                |
+| 5     | Power       |                           | 3.6V           |
+| 6     | Attention   | PlayStation -> Controller |                |
+| 7     | Clock       | PlayStation -> Controller |                |
+| 8     | (Unknown)   |                           |                |
+| 9     | Acknowledge | Controller -> PlayStation | Open Collector |
+
 **You are advised not to rely on wire colors, but rather on pin positions**. The wires in the image come from an official Sony controller, I expect their colors to be fairly consistent among all Sony controllers, but you shouldn't really trust them.
 
-I recommend using 3.3V power and signal levels. While everything will appear to work fine at 5V, PlayStation controllers are not made to work at that voltage and they will break sooner or later. Many of the tutorials out there ignore this fact, but they really shouldn't. You have been warned.
+### TL;DR
+Just follow [the PsxControllerShield schematics](https://github.com/SukkoPera/PsxControllerShield/blob/master/doc/schematics.pdf) **but with 1k pull-ups**:
+- Power the controller at 3.3V.
+- Don't bother with Motor Power unless you wanna rumble.
+- Connect all signals with proper level shifting and **1k pull-ups**.
 
-In order to make things as safe and straightforward as possible, **I have also designed [an Arduino shield](https://github.com/SukkoPera/PsxControllerShield) that will work perfectly with this library**. Please check it out and use it as your reference for all connections.
+### Power
+When plugged in a real PlayStation console, controllers are powered with 3.6V on pin 5. Most Arduinos work at 5V, thus some level adjustement MUST be done. I know that (too) many tutorials and videos out there suggest that powering the controller at 5V is just fine, but the truth is that it is not: PlayStation controllers are not made to work at that voltage and they WILL break sooner or later. You have been warned.
+
+Now, I know 3.6V regulators aren't exactly common. An LM317 could be used but it requires extra resistors to set the output voltage and as such it is prone to errors. 3.3V seems close enough though, there are plenty of regulators for that voltage and my experience seems to suggest that all PSX controllers work just perfectly at that voltage, and this slight undervoltage is definitely safer than powering everything at 5V.
+
+Most conveniently, almost all classic Arduinos have an onboard 3.3V regulator. It is generally rated for only "little" current (say 50 mA?), but that will be enough.
+
+Motor Power is not essential if you do not mean to use the rumble feature. If you do, you can derive 7.5V from 9V through an LM317 regulator, unfortunately there are no shortcuts this time... Unless you use one of those wireless controllers that are battery-powered: in this case, don't worry at all about the Motor Power pin.
+I recommend using 3.3V power and signal levels. While everything will appear to work fine at 5V, PlayStation controllers are not made to work at that voltage and they will break sooner or later. Many of the tutorials out there ignore this fact, but they really shouldn't.
+
+Of course, if you use an Arduino board that works at 3.3V, you won't need any level shifting but **you will still need the pull-up resistors**, as the built-in ones are too weak.
+
+### Data
+If you power the controller at 3.3V, all the I/O lines must also work at that voltage. There are a few ways to achieve this, but the easiest one is using those bidirectional 4-channel level shifters you can get cheaply from China. You don't need bidirectionality, strictly speaking, still they are (almost) ideal for this application since they also provide pull-ups for the open-collector outputs and come in sets of 4, besides being veeeeery cheap.
+
+The only issue is that these adapters generally come with 10k pull-up resistors, which are too weak and will create compatibility issues with some controllers. Therefore, **you MUST replace them with 1k ones** or put 1k in parallel to each..
+
+A note on the *Acknowledge* pin: the original library did not connect this, which is one of the reasons why it is not compatible with some controllers: it waits a fixed interval between consecutive bytes instead of checking for the ACK pulse. Since some controllers are slower than others (typically older ones), they might not yet be ready for the next byte if the delay is not well calibrated (and it isn't).
+
+The current version of PsxNewLib does the same, in that it does not use the ACK pin at all, but the delay was calibrated better. However this means that all controllers are polled much slower than they could be. Since this could be easily avoided by polling the ACK pin, **future versions of the library will require it**, so you are advised to wire it even if it is not necessary for the time being. If you don't want to waste a 4-channel module for a single signal, just connect it directly to an Arduino pin of choice and then connect a 1k resistor between it and 3.3V.
+
+### Arduino Shield
+In order to make things as safe and straightforward as possible, **I have designed [an Arduino shield](https://github.com/SukkoPera/PsxControllerShield) that will work perfectly with this library**. Please check it out and use it as your reference for all connections.
 
 ## Compatibility List
 PsxNewLib aims to be compatible with all devices. I expect this to be the case with all the official controllers produced by Sony. Third-party devices should also work anyway. If you find one that doesn't work, please open an issue and I'll do my best to add support for it.
