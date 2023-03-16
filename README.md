@@ -58,21 +58,19 @@ Just follow [the PsxControllerShield schematics](https://github.com/SukkoPera/Ps
 - Connect all signals with proper level shifting and **1k pull-ups**.
 
 ### Power
-When plugged in a real PlayStation console, controllers are powered with 3.6V on pin 5. Most Arduinos work at 5V, thus some level adjustement MUST be done. I know that (too) many tutorials and videos out there suggest that powering the controller at 5V is just fine, but the truth is that it is not: PlayStation controllers are not made to work at that voltage and they WILL break sooner or later. You have been warned.
+When plugged in a real PlayStation console, controllers are powered with 3.6V on pin 5. Most Arduinos work at 5V, thus some level adjustement MUST be done. There are (too) many tutorials and videos out there that suggest that powering the controller at 5V is just fine, but the truth is that **it is not**: PlayStation controllers are not made to work at that voltage and **they WILL break** sooner or later. You have been warned.
 
-Now, I know 3.6V regulators aren't exactly common. An LM317 could be used but it requires extra resistors to set the output voltage and as such it is prone to errors. 3.3V seems close enough though, there are plenty of regulators for that voltage and my experience seems to suggest that all PSX controllers work just perfectly at that voltage, and this slight undervoltage is definitely safer than powering everything at 5V.
-
-Most conveniently, almost all classic Arduinos have an onboard 3.3V regulator. It is generally rated for only "little" current (say 50 mA?), but that will be enough.
+Now, I know 3.6V regulators aren't exactly common. An LM317 could be used but it requires extra resistors to set the output voltage and as such it is prone to errors. 3.3V seems close enough though, there are plenty of regulators for that voltage and my experience seems to suggest that all PSX controllers work just perfectly at that voltage, and this slight undervoltage is definitely safer than powering everything at 5V. Most conveniently, almost all classic Arduinos have an onboard 3.3V regulator. It is generally rated for only "little" current (say 50 mA?), but that will be enough.
 
 Motor Power is not essential if you do not mean to use the rumble feature. If you do, you can derive 7.5V from 9V through an LM317 regulator, unfortunately there are no shortcuts this time... Unless you use one of those wireless controllers that are battery-powered: in this case, don't worry at all about the Motor Power pin.
 I recommend using 3.3V power and signal levels. While everything will appear to work fine at 5V, PlayStation controllers are not made to work at that voltage and they will break sooner or later. Many of the tutorials out there ignore this fact, but they really shouldn't.
-
-Of course, if you use an Arduino board that works at 3.3V, you won't need any level shifting but **you will still need the pull-up resistors**, as the built-in ones are too weak.
 
 ### Data
 If you power the controller at 3.3V, all the I/O lines must also work at that voltage. There are a few ways to achieve this, but the easiest one is using those bidirectional 4-channel level shifters you can get cheaply from China. You don't need bidirectionality, strictly speaking, still they are (almost) ideal for this application since they also provide pull-ups for the open-collector outputs and come in sets of 4, besides being veeeeery cheap.
 
 The only issue is that these adapters generally come with 10k pull-up resistors, which are too weak and will create compatibility issues with some controllers. Therefore, **you MUST replace them with 1k ones** or put 1k in parallel to each..
+
+Of course, if you use an Arduino board that works at 3.3V, you won't need any level shifting but **you will still need the pull-up resistors**, as the built-in ones are too weak.
 
 A note on the *Acknowledge* pin: the original library did not connect this, which is one of the reasons why it is not compatible with some controllers: it waits a fixed interval between consecutive bytes instead of checking for the ACK pulse. Since some controllers are slower than others (typically older ones), they might not yet be ready for the next byte if the delay is not well calibrated (and it isn't).
 
