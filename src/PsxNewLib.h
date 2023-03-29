@@ -293,6 +293,26 @@ enum GunconStatus {
 	GUNCON_OTHER_ERROR
 };
 
+//! \brief Jogcon rotation direction
+enum JogconDirection {
+	JOGCON_DIR_NONE = 0x0,
+	JOGCON_DIR_CW = 0x1,
+	JOGCON_DIR_CCW = 0x2,
+	JOGCON_DIR_START = 0x3,
+	//Bellow values are only used as return on getJogconData()
+	JOGCON_DIR_MAX = 0x4, //Position and revolutions maxed out
+	JOGCON_DIR_OTHER = 0xF //Using 0x0F as generic unhandled code
+};
+
+//! \brief Jogcon command
+enum JogconCommand {
+	JOGCON_CMD_NONE = 0x0,
+	JOGCON_CMD_DROP_REVOLUTIONS = 0x80,
+	JOGCON_CMD_NEW_START = 0xC0,
+	//Bellow values are only used as return on getJogconData()
+	JOGCON_CMD_OTHER = 0xF0 //Using 0xF0 as generic unhandled code return
+};
+
 /** \brief PSX Controller Interface
  * 
  * This is the base class implementing interactions with PSX controllers. It is
@@ -376,6 +396,12 @@ protected:
 	 *  Rumble must be enabled and 7.5v supplied to pin 3!
 	 */
 	byte motor2Level;
+
+	/** \brief requested jogcon motor power and mode.
+	 * 
+	 *  Rumble must be enabled and 7.5v supplied to pin 3!
+	 */
+	byte jogconMotorLevelAndMode;
 
 	/** \brief Assert the Attention line
 	 * 
@@ -584,6 +610,7 @@ public:
 		rumbleEnabled = false;
 		motor1Level = 0x00;
 		motor2Level = 0x00;
+		jogconMotorLevelAndMode = 0x00;
 
 		// Some disposable readings to let the controller know we are here
 		for (byte i = 0; i < 5; ++i) {
@@ -901,8 +928,12 @@ public:
 		if(rumbleEnabled) {
 			byte out[sizeof (poll)];
 			memcpy(out, poll, sizeof(poll));
-			out[3] = motor1Level;
-			out[4] = motor2Level;
+			if (protocol == PSPROTO_JOGCON) {
+				out[3] = jogconMotorLevelAndMode;
+			} else {
+				out[3] = motor1Level;
+				out[4] = motor2Level;
+			}
 			in = autoShift (out, sizeof(poll));
 		}
 		else {
@@ -1014,6 +1045,12 @@ public:
 
 						// Bring to the usual 0-255 range
 						lx += 0x80;
+
+						//Stores the "raw" data to use on getJogconData().
+						//Reusing the analogButtonData array. Need to make a new structure to hold those values.
+						analogButtonData[PSAB_PAD_RIGHT] = in[5];
+						analogButtonData[PSAB_PAD_LEFT] = in[6];
+						analogButtonData[PSAB_PAD_UP] = in[7];
 						break;
 					default:
 						// We are already done
@@ -1228,6 +1265,87 @@ public:
 		}
 
 		return status;
+	}
+
+
+	/** \brief Set Jogcon direction, command and motor power
+	 * 
+	 * Data will be combined into a single byte as ddccffff, where
+	 * dd   = direction (2 bits)
+	 * cc   = command (2 bits)
+	 * ffff = force (4 bits)
+	 *
+	 * \param[in] direction The direction for motor rotation
+	 * \param[in] command The Command to be sent
+	 * \param[in] motorPower The amount of motor power. Max 15 (0x0F).
+	 */
+	void setJogconMotorMode (JogconDirection direction, JogconCommand command, const uint8_t motorPower) {
+		if((byte)direction > 0x3)
+			direction = JOGCON_DIR_NONE;
+
+		if((byte)command == JOGCON_CMD_OTHER)
+			command = JOGCON_CMD_NONE;
+
+		jogconMotorLevelAndMode = ((byte)direction << 4) | (command | (motorPower & 0x0F));
+	}
+
+
+	/** \brief Retrieve Jogcon state and raw readings
+	 * 
+	 * \param[in] position A variable where the jog position will be stored
+	 * \param[in] revolutions A variable where the jog revolutions will be stored
+	 * \param[in] direction A variable where the last direction will be stored
+	 * \param[in] cmdResult A variable where the last command sent will be stored
+	 * 
+	 * \return true if the device is Jogcon and data is valid
+	 */
+	bool getJogconData (uint8_t& position, uint8_t& revolutions, JogconDirection& direction, JogconCommand& cmdResult) const {
+		if (protocol == PSPROTO_JOGCON && analogSticksValid) {
+			position = analogButtonData[PSAB_PAD_RIGHT];
+			revolutions = analogButtonData[PSAB_PAD_LEFT];
+			//state = static_cast<JogconRotation>(analogButtonData[PSAB_PAD_UP]);
+
+			//State byte contains two nibbles with data.
+			//Rotation state and command result
+			
+			//Last rotation direction
+			switch (analogButtonData[PSAB_PAD_UP] & 0x0F) {
+			case 0x0:
+				direction = JOGCON_DIR_NONE;
+				break;
+			case 0x1:
+				direction = JOGCON_DIR_CW;
+				break;
+			case 0x2:
+				direction = JOGCON_DIR_CCW;
+				break;
+			case 0x4:
+				direction = JOGCON_DIR_MAX; //Max value reached (overflow)
+				break;
+			default:
+				direction = JOGCON_DIR_OTHER; //Other - unhandled
+				break;
+			}
+
+			//Last command result
+			switch (analogButtonData[PSAB_PAD_UP] & 0xF0) {
+			case 0x00:
+				cmdResult = JOGCON_CMD_NONE;
+				break;
+			case 0x80:
+				cmdResult = JOGCON_CMD_DROP_REVOLUTIONS;
+				break;
+			case 0xC0:
+				cmdResult = JOGCON_CMD_NEW_START;
+				break;
+			default:
+				cmdResult = JOGCON_CMD_OTHER; //Other - unhandled
+				break;
+			}
+			return true;
+		}
+
+		return false;
 	}
 	
 	//! @}		// Polling Functions
