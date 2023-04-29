@@ -68,6 +68,20 @@ const unsigned long COMMAND_RETRY_INTERVAL = 10;
  */
 const unsigned long MODE_SWITCH_DELAY = 500;
 
+/** \brief Motor value for old rumble method.
+ * 
+ *  If changing this value: bit7 must be clear, bit6 mut be set.
+ *  7.5v must be supplied to pin 3!
+ */
+const byte MOTOR_OLD_1 = 0x40;
+
+/** \brief Motor value for old rumble method.
+ * 
+ *  If changing this value: bit0 must be set.
+ *  7.5v must be supplied to pin 3!
+ */
+const byte MOTOR_OLD_2 = 0x01; 
+
 
 /** \brief Type that is used to represent a single button in most places
  */
@@ -738,13 +752,28 @@ public:
 	 * This function sets internal variables that set the requested motor power of the rumble motors.
 	 *  NOTE this does nothing if rumble has not been enabled with enableRumble(), rumble motors will 
 	 *  activate or deactivate to match the arguments of this function with the next call to read()
+	 *  
+	 *  NOTE it's possible to use single motor rumble on the japanese SCPH-1150.
+	 *  DualShock is also backwards compatible with this mode. This function will use the "old rumble"
+	 * 	when rumbleEnabled is not set. After entering Config Mode, the old rumble will not work
+	 *  anymore until the controller is powered off and on again.
 	 *
 	 * \param[in] enabled true to activate motor 1, false to deactivate.
 	 * \param[in] requested motor power of motor 2, where 0x00 to 0xFF corresponds to 0 to 100%.
 	 */
 	void setRumble(bool motor1Active = true, byte motor2Power = 0xff) {
-		motor1Level = motor1Active ? 0xff : 0x00;
-		motor2Level = motor2Power;
+		if (rumbleEnabled) {
+			motor1Level = motor1Active ? 0xff : 0x00;
+			motor2Level = motor2Power;
+		} else { //Old rumble method. Single motor
+			if (motor1Active) {
+				motor1Level = MOTOR_OLD_1;
+				motor2Level = MOTOR_OLD_2;
+			} else {
+				motor1Level = 0x0;
+				motor2Level = 0x0;
+			}
+		}
 	}
 
 	/** \brief Enable (or disable) analog buttons
@@ -898,7 +927,7 @@ public:
 
 		attention ();
 		byte *in = nullptr;
-		if(rumbleEnabled) {
+		if(rumbleEnabled || (motor1Level == MOTOR_OLD_1 && motor2Level == MOTOR_OLD_2)) {
 			byte out[sizeof (poll)];
 			memcpy(out, poll, sizeof(poll));
 			out[3] = motor1Level;
