@@ -62,3 +62,17 @@ public:
 		return PsxController::begin ();
 	}
 };
+
+template <uint8_t PIN_ATT, uint8_t PIN_ACK>
+class PsxControllerHwSpiWithAck: public PsxControllerHwSpi<PIN_ATT> {
+private:
+	DigitalPin<PIN_ACK> ack;
+
+public:
+	virtual boolean begin () override {
+		ack.config (INPUT, HIGH);     // Enable pull-up
+		initAckPin (PIN_ACK);
+
+		return PsxControllerHwSpi<PIN_ATT>::begin ();
+	}
+};
