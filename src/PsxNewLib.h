@@ -1183,7 +1183,7 @@ public:
 	 *              [0-255, U to D]
 	 * \return true if the returned position is valid, false otherwise
 	 */
-	boolean getRightAnalog (byte& x, byte& y) {
+	boolean getRightAnalog (byte& x, byte& y) const {
 		x = rx;
 		y = ry;
 
