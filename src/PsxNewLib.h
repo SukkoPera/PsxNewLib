@@ -175,7 +175,9 @@ static const byte poll[] = {0x01, 0x42, 0x00, 0xFF, 0xFF};
 enum PsxControllerType {
 	PSCTRL_UNKNOWN = 0,			//!< No idea
 	PSCTRL_DUALSHOCK,			//!< DualShock or compatible
+	PSCTRL_DUALSHOCK2,			//!< DualShock2 or compatible
 	PSCTRL_DSWIRELESS,			//!< Sony DualShock Wireless
+	PSCTRL_JOGCON,				//!< Namco JogCon
 	PSCTRL_GUITHERO,			//!< Guitar Hero controller
 };
 
@@ -821,11 +823,15 @@ public:
 		if (in != nullptr) {
 			const byte& controllerType = in[3];
 			if (controllerType == 0x03) {
-				ret = PSCTRL_DUALSHOCK;
+				ret = PSCTRL_DUALSHOCK2;
 			//~ } else if (controllerType == 0x01 && in[1] == 0x42) {
 				//~ return 4;		// ???
-			}  else if (controllerType == 0x01 && in[1] != 0x42) {
-				ret = PSCTRL_GUITHERO;
+			} else if (controllerType == 0x01 && in[6] == 0x01) {
+				ret = PSCTRL_JOGCON;
+			//~ } else if (controllerType == 0x01 && in[1] != 0x42) {
+			//~ 	ret = PSCTRL_GUITHERO;
+			} else if (controllerType == 0x01) {
+				ret = PSCTRL_DUALSHOCK;
 			} else if (controllerType == 0x0C) {
 				ret = PSCTRL_DSWIRELESS;
 			}
